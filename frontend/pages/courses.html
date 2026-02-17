@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Courses | Smart Course Companion</title>
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/layout.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/pages/courses.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">Smart Course Companion</div>
+        <nav class="sidebar-nav">
+          <a class="nav-link" href="./dashboard.html">Dashboard</a>
+          <a class="nav-link active" href="./courses.html">Courses</a>
+          <a class="nav-link" href="./course-details.html">Course Details</a>
+          <a class="nav-link" href="./admin.html">Admin</a>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <header class="courses-header">
+          <h1 class="topbar-title">My Courses</h1>
+          <button class="btn btn-primary" type="button">Add Course</button>
+        </header>
+
+        <section class="content-grid grid-2">
+          <article class="card course-card">
+            <h2 class="card-title">SOEN 287 - Web Programming</h2>
+            <p class="course-meta">Winter 2026</p>
+            <p class="card-subtitle">Frontend development, UI design, and interaction patterns.</p>
+            <div class="course-actions">
+              <a class="btn btn-outline" href="./course-details.html">Open</a>
+              <button class="btn btn-danger" type="button">Drop</button>
+            </div>
+          </article>
+
+          <article class="card course-card">
+            <h2 class="card-title">COMP 352 - Data Structures</h2>
+            <p class="course-meta">Winter 2026</p>
+            <p class="card-subtitle">Algorithm analysis and practical implementation patterns.</p>
+            <div class="course-actions">
+              <a class="btn btn-outline" href="./course-details.html">Open</a>
+              <button class="btn btn-danger" type="button">Drop</button>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

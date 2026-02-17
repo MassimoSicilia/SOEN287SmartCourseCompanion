@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin | Smart Course Companion</title>
+    <link rel="stylesheet" href="../css/base.css" />
+    <link rel="stylesheet" href="../css/layout.css" />
+    <link rel="stylesheet" href="../css/components.css" />
+    <link rel="stylesheet" href="../css/pages/admin.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <aside class="sidebar">
+        <div class="brand">Smart Course Companion</div>
+        <nav class="sidebar-nav">
+          <a class="nav-link" href="./dashboard.html">Dashboard</a>
+          <a class="nav-link" href="./courses.html">Courses</a>
+          <a class="nav-link" href="./course-details.html">Course Details</a>
+          <a class="nav-link active" href="./admin.html">Admin</a>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <h1 class="topbar-title">Admin Panel</h1>
+          <button class="btn btn-primary" type="button">Create Announcement</button>
+        </header>
+
+        <section class="card">
+          <div class="admin-filters">
+            <input class="form-input" type="text" placeholder="Search users" />
+            <select class="form-select">
+              <option>All Roles</option>
+              <option>Student</option>
+              <option>Teacher</option>
+              <option>Admin</option>
+            </select>
+            <button class="btn btn-outline" type="button">Filter</button>
+          </div>
+
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Role</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Alex Chen</td>
+                <td>Student</td>
+                <td><span class="badge badge-success">Active</span></td>
+              </tr>
+              <tr>
+                <td>Priya Patel</td>
+                <td>Teacher</td>
+                <td><span class="badge badge-warning">Pending</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="admin-tools">
+          <article class="card">
+            <h2 class="card-title">Quick User Action</h2>
+            <div class="form-group">
+              <label class="form-label" for="user-email">User Email</label>
+              <input class="form-input" id="user-email" type="email" placeholder="user@school.edu" />
+            </div>
+            <button class="btn btn-primary" type="button">Invite User</button>
+          </article>
+
+          <article class="card">
+            <h2 class="card-title">System Notes</h2>
+            <div class="form-group">
+              <label class="form-label" for="admin-note">Message</label>
+              <textarea class="form-textarea" id="admin-note" placeholder="Write an internal update..."></textarea>
+            </div>
+            <button class="btn btn-outline" type="button">Save Note</button>
+          </article>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
