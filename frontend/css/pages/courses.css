@@ -1,0 +1,22 @@
+.courses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.course-card {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.course-meta {
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.course-actions {
+  display: flex;
+  gap: 0.5rem;
+}
