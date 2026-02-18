@@ -7,13 +7,37 @@ class Course {
   }
 }
 
-const courses = [];
+const storage = "sccCourses";
+let courses = [];
 
 const addCourseBtn = document.getElementById("addCourseBtn");
 const addCourseModal = document.getElementById("addCourseModal");
 const addCourseForm = document.getElementById("addCourseForm");
 const cancelAddCourseBtn = document.getElementById("cancelAddCourseBtn");
 const coursesGrid = document.getElementById("coursesGrid");
+
+//saves the courses to local storage
+function saveCourse() {
+  localStorage.setItem(storage, JSON.stringify(courses));
+  console.log("Courses saved:", courses);
+}
+
+//loads the courses from local storage
+function loadCourses() {
+  const raw = localStorage.getItem(storage);
+  if (!raw) return [];
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+//renders all courses from local storage on page load
+function renderCourses() {
+  coursesGrid.innerHTML = "";
+  courses.forEach(renderCourse);
+}
 
 function openAddCourseModal() {
   addCourseModal.classList.add("is-open");
@@ -59,13 +83,13 @@ function renderCourse(course) {
       (savedCourse) =>
         savedCourse.code === course.code &&
         savedCourse.name === course.name &&
-        savedCourse.term === course.term
+        savedCourse.term === course.term,
     );
 
     if (index > -1) {
       courses.splice(index, 1);
+      saveCourse();
     }
-
     card.remove();
   });
 
@@ -97,10 +121,25 @@ addCourseForm.addEventListener("submit", (event) => {
     formData.get("courseCode").trim(),
     formData.get("courseName").trim(),
     formData.get("courseTerm").trim(),
-    formData.get("courseDescription").trim()
+    formData.get("courseDescription").trim(),
+  );
+  const alreadyExists = courses.some(
+    (c) =>
+      c.code.toLowerCase() === course.code.toLowerCase() &&
+      c.term === course.term,
   );
 
+  if (alreadyExists) {
+    alert("Course already exists.");
+    return;
+  }
+
   courses.push(course);
+  saveCourse();
   renderCourse(course);
   closeAddCourseModal();
+  console.log("Course added:", course);
 });
+
+courses = loadCourses();
+renderCourses();
