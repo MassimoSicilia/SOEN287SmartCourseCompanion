@@ -24,31 +24,92 @@
       <main class="main-content">
         <header class="courses-header">
           <h1 class="topbar-title">My Courses</h1>
-          <button class="btn btn-primary" type="button">Add Course</button>
+          <button class="btn btn-primary" id="addCourseBtn" type="button">
+            Add Course
+          </button>
         </header>
+        <!-- Section where all classes will be displayed in a grid format. 
+        Each course will have a card with its details and options to edit or 
+        delete the course. The "Add Course" button will open a modal form to input new course information. -->
+        <section class="content-grid grid-2" id="coursesGrid">
+          <!-- modal to prompt user to input new course details -->
+          <div class="modal-overlay" id="addCourseModal" aria-hidden="true">
+            <div
+              class="modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="addCourseTitle"
+            >
+              <h2 class="card-title" id="addCourseTitle">Add Course</h2>
+              <form id="addCourseForm">
+                <div class="form-group">
+                  <label class="form-label" for="courseCode">Course Code</label>
+                  <input
+                    class="form-input"
+                    id="courseCode"
+                    name="courseCode"
+                    type="text"
+                    placeholder="SOEN 287"
+                    required
+                  />
+                </div>
+                <!-- course details-->
+                <div class="form-group">
+                  <label class="form-label" for="courseName">Course Name</label>
+                  <input
+                    class="form-input"
+                    id="courseName"
+                    name="courseName"
+                    type="text"
+                    placeholder="Web Programming"
+                    required
+                  />
+                </div>
 
-        <section class="content-grid grid-2">
-          <article class="card course-card">
-            <h2 class="card-title">SOEN 287 - Web Programming</h2>
-            <p class="course-meta">Winter 2026</p>
-            <p class="card-subtitle">Frontend development, UI design, and interaction patterns.</p>
-            <div class="course-actions">
-              <a class="btn btn-outline" href="./course-details.html">Open</a>
-              <button class="btn btn-danger" type="button">Drop</button>
-            </div>
-          </article>
+                <div class="form-group">
+                  <label class="form-label" for="courseTerm">Term</label>
+                  <input
+                    class="form-input"
+                    id="courseTerm"
+                    name="courseTerm"
+                    type="text"
+                    placeholder="Winter 2026"
+                    required
+                  />
+                </div>
 
-          <article class="card course-card">
-            <h2 class="card-title">COMP 352 - Data Structures</h2>
-            <p class="course-meta">Winter 2026</p>
-            <p class="card-subtitle">Algorithm analysis and practical implementation patterns.</p>
-            <div class="course-actions">
-              <a class="btn btn-outline" href="./course-details.html">Open</a>
-              <button class="btn btn-danger" type="button">Drop</button>
+                <div class="form-group">
+                  <label class="form-label" for="courseDescription"
+                    >Short Description</label
+                  >
+                  <textarea
+                    class="form-textarea"
+                    id="courseDescription"
+                    name="courseDescription"
+                    placeholder="Brief summary of the course..."
+                    required
+                  ></textarea>
+                </div>
+
+                <div class="modal-actions">
+                  <button
+                    class="btn btn-outline"
+                    id="cancelAddCourseBtn"
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button class="btn btn-primary" type="submit">
+                    Add Course
+                  </button>
+                </div>
+              </form>
             </div>
-          </article>
+          </div>
         </section>
       </main>
     </div>
+
+    <script src="../js/courses.js"></script>
   </body>
 </html>

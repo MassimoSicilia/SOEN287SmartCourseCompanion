@@ -4,6 +4,8 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: solid rgba(15, 23, 42, 0.5) 2px;
 }
 
 .course-card {
@@ -18,5 +20,30 @@
 
 .course-actions {
   display: flex;
+  gap: 0.5rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 1000;
+}
+
+.modal-overlay.is-open {
+  display: flex;
+}
+
+.modal {
+  width: min(560px, 100%);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
   gap: 0.5rem;
 }
