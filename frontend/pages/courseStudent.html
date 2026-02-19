@@ -1,8 +1,22 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
+<html>
 <head>
-
+    <link rel="stylesheet" href="../css/pages/style.css">
+    <script src="../js/pages/courseStudent.js" defer></script>
 </head>
-<body>
 
+<body>
+    <div class="container">
+        <h1 id="course-title">SOEN 287</h1>
+
+        <div class="button-row">
+            <button id="inProgressBtn" class="tab active">In progress</button>
+            <button id="completedBtn" class="tab">Completed</button>
+        </div>
+
+        <div id="inProgressContent" class="tab-content"></div>
+        <div id="completedContent" class="tab-content" style="display:none;"></div>
+
+    </div>
 </body>
 </html>
