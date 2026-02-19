@@ -19,7 +19,7 @@ const coursesGrid = document.getElementById("coursesGrid");
 //saves the courses to local storage
 function saveCourse() {
   localStorage.setItem(storage, JSON.stringify(courses));
-  console.log("Courses saved:", courses);
+  // console.log("Courses saved:", courses);
 }
 
 //loads the courses from local storage
@@ -138,7 +138,7 @@ addCourseForm.addEventListener("submit", (event) => {
   saveCourse();
   renderCourse(course);
   closeAddCourseModal();
-  console.log("Course added:", course);
+  // console.log("Course added:", course);
 });
 
 courses = loadCourses();
