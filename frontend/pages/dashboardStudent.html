@@ -5,9 +5,85 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Student</title>
-    <link rel="stylesheet" href="../assets/css/dashboardStudent.css">
+    <link rel="stylesheet" href="../css/pages/dashboardStudent.css">
+    <script src="../js/dashboardStudent.js" defer></script>
 </head>
 <body>
-    
+    <div class="dashboard-header">
+        <div class="dashboard-left">
+            <button class="menu-button" aria-label="Open sidebar">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <div class="dashboard-title">
+                <h1>Dashboard</h1>
+            </div>
+        </div>
+        <div class="dashboard-user-icon-div">
+            <img class="dashboard-user-icon-img" src="../assets/icons/user-icon.png" alt="User Icon">
+        </div>
+    </div>
+    <div class="upcoming-assessments-container">
+        <div class="upcoming-assessments-box">
+            <div class="assessments-list-header">
+                <h2>Upcoming Assignments</h2>
+            </div>
+
+            <div class="assignment-row assignment-row-head">
+                <span>Task</span>
+                <span>Due</span>
+                <span>Status</span>
+            </div>
+
+            <div class="assignment-row">
+                <span>Project Milestone 2</span>
+                <span>Feb 21</span>
+                <span class="status-pill">Complete</span>
+            </div>
+
+            <div class="assignment-row">
+                <span>Lab 4 - Graph Traversal</span>
+                <span>Feb 24</span>
+                <span class="status-pill">Complete</span>
+            </div>
+
+            <div class="assignment-row">
+                <span>Quiz Prep Worksheet</span>
+                <span>Feb 26</span>
+                <span class="status-pill in-progress">In Progress</span>
+            </div>
+        </div>
+    </div>
+    <div class="courses-div">
+        <div class="courses-header">
+            <div class="courses-title">
+                <h2>Courses</h2>
+            </div>
+            <div class="add-courses-class">
+                <button id="add-course-btn" class="add-courses-button">Add Course</button>
+            </div>
+        </div>
+        <div class="courses-list">
+            <div class="course-card">
+                <h3>SOEN 287 - Web Development</h3>
+                <p><span class="course-label">Prof:</span> John Doe</p>
+                <p><span class="course-label">Section:</span> UU</p>
+                <p><span class="course-label">Term:</span> Winter 2026</p>
+            </div>
+            <div class="course-card">
+                <h3>SOEN 228 - Software Construction</h3>
+                <p><span class="course-label">Prof:</span> Jane Smith</p>
+                <p><span class="course-label">Section:</span> AB</p>
+                <p><span class="course-label">Term:</span> Winter 2026</p>
+            </div>
+            <div class="course-card">
+                <h3>SOEN 341 - Software Testing</h3>
+                <p><span class="course-label">Prof:</span> Mark Lee</p>
+                <p><span class="course-label">Section:</span> CC</p>
+                <p><span class="course-label">Term:</span> Winter 2026</p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
