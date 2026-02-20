@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Course Companion Sign Up</title>
+    <link rel="stylesheet" href="../css/pages/signUp.css" />
+  </head>
+  <body>
+    <div class="signUpContainer" id="formContainer">
+      <h2>Create your Account</h2>
+      <!-- Sign Up Form -->
+      <form id="signUpForm">
+        <div class="container">
+          <label for="username">Username:</label><br />
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Username"
+            required
+          /><br />
+        </div>
+        <div c;lass="container">
+          <label for="email">Email:</label><br />
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Enter your email"
+            required
+          /><br />
+        </div>
+        <div class="container">
+          <!--user checks if admin or student-->
+          <fieldset>
+            <legend>Account Type:</legend>
+            <input type="radio" id="isInstructor" name="status" required />
+            <label for="isInstructor">Instructor</label><br />
+            <input type="radio" id="isStudent" name="status" />
+            <label for="isStudent">Student</label><br />
+          </fieldset>
+        </div>
+
+        <!-- if student is checked, ID field appears -->
+        <div class="container" id="IdDiv" style="display: none">
+          <label for="studentID" name="studentID">Student ID:</label><br />
+          <input
+            type="text"
+            id="studentID"
+            name="studentID"
+            placeholder="123456789"
+          /><br />
+        </div>
+
+        <div class="container">
+          <label for="password">Password:</label><br />
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Password"
+            required
+          /><br />
+        </div>
+        <div class="container">
+          <label for="Re-enter password">Re-enter Password:</label><br />
+          <input
+            type="password"
+            id="passwordWord2"
+            name="passwordWord2"
+            placeholder="Password"
+          /><br />
+        </div>
+
+        <!--Submit button brings user to respective dashboard based on their status (admin/student)-->
+        <input type="submit" value="Sign Up" />
+      </form>
+    </div>
+    <script>
+      // JavaScript to toggle the visibility of the Student ID field based on account type selection
+      document
+        .getElementById("isStudent")
+        .addEventListener("change", function () {
+          document.getElementById("IdDiv").style.display = this.checked
+            ? "block"
+            : "none";
+        });
+
+      document
+        .getElementById("isInstructor")
+        .addEventListener("change", function () {
+          document.getElementById("IdDiv").style.display = "none";
+        });
+    </script>
+  </body>
+</html>
