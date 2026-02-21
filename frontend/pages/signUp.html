@@ -92,6 +92,13 @@
         .addEventListener("change", function () {
           document.getElementById("IdDiv").style.display = "none";
         });
+
+      document
+        .getElementById("signUpForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault();
+          window.location.href = "dashboardStudent.html";
+        });
     </script>
   </body>
 </html>
