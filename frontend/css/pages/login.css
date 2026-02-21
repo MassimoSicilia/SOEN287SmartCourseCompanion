@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
 * {
   box-sizing: border-box;
 }
@@ -9,7 +11,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   position: relative;
   overflow: hidden;
   background-color: #040b51;
@@ -67,12 +69,17 @@ a {
 .loginContainer h2 {
   text-align: center;
   color: #0f3a5c;
-  text-decoration: underline;
+  font-family: "Outfit", "Manrope", sans-serif;
 }
 #loginForm {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+label {
+  font-weight: 700;
+  color: #0f3a5c;
 }
 
 div {
