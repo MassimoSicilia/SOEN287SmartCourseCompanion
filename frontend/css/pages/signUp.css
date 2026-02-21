@@ -1,0 +1,224 @@
+* {
+  box-sizing: border-box;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  position: relative;
+  overflow: hidden;
+  background-color: #040b51;
+  background-image:
+    radial-gradient(
+      circle at 16% 18%,
+      rgba(54, 93, 230, 0.34) 0%,
+      rgba(4, 11, 81, 0) 36%
+    ),
+    radial-gradient(
+      circle at 82% 82%,
+      rgba(24, 132, 224, 0.22) 0%,
+      rgba(4, 11, 81, 0) 40%
+    ),
+    linear-gradient(145deg, #040b51 0%, #071160 50%, #040b51 100%);
+}
+
+.signUpContainer {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  width: min(100%, 380px);
+  background: #f8fbff;
+  border: 1px solid rgba(20, 70, 110, 0.16);
+  border-radius: 10px;
+  box-shadow: 20px 20px 20px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+
+h2 {
+  text-align: center;
+  color: #0f3a5c;
+  text-decoration: underline;
+}
+
+#signUpForm {
+  display: flex;
+  flex-direction: column;
+}
+
+div {
+  display: flex;
+  flex-direction: column;
+}
+label {
+  font-weight: 700;
+  color: #0f3a5c;
+}
+
+#signUpForm input[type="submit"] {
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: 9px;
+  padding: 0.65rem 0.9rem;
+  background: #1573b5;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+#signUpForm input[type="password"] {
+  margin-top: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(
+        120deg,
+        #1a4d8f 0%,
+        #0a2f63 28%,
+        #2d6bb1 50%,
+        #0a2f63 72%,
+        #1a4d8f 100%
+      )
+      border-box;
+  background-size:
+    100% 100%,
+    240% 100%;
+  background-position:
+    0 0,
+    180% 0;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#signUpForm input[type="text"] {
+  margin-top: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(
+        120deg,
+        #1a4d8f 0%,
+        #0a2f63 28%,
+        #2d6bb1 50%,
+        #0a2f63 72%,
+        #1a4d8f 100%
+      )
+      border-box;
+  background-size:
+    100% 100%,
+    240% 100%;
+  background-position:
+    0 0,
+    180% 0;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#signUpForm input[type="email"] {
+  margin-top: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(
+        120deg,
+        #1a4d8f 0%,
+        #0a2f63 28%,
+        #2d6bb1 50%,
+        #0a2f63 72%,
+        #1a4d8f 100%
+      )
+      border-box;
+  background-size:
+    100% 100%,
+    240% 100%;
+  background-position:
+    0 0,
+    180% 0;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#signUpForm input[type="submit"]:hover {
+  background: #0e5f98;
+  transform: translateY(-2px);
+}
+
+#signUpForm input[type="password"]:hover {
+  transform: translateY(-2px);
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.2);
+}
+
+#signUpForm input[type="email"]:hover {
+  transform: translateY(-2px);
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.2);
+}
+
+#signUpForm input[type="text"]:hover {
+  transform: translateY(-2px);
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.2);
+}
+
+
+#signUpForm input[type="password"]:focus,
+#signUpForm input[type="text"]:focus {
+  outline: none;
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.25);
+}
+
+@keyframes blueBorderPulse {
+  from {
+    background-position:
+      0 0,
+      180% 0;
+  }
+  to {
+    background-position:
+      0 0,
+      -40% 0;
+  }
+}
+
+/*styling radio buttons*/
+
+fieldset {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 0;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+legend {
+  padding: 0.5rem 1rem;
+  font-weight: 700;
+  color: #0f3a5c;
+}
