@@ -15,7 +15,7 @@ h1 {
 
 .button-row {
     display: flex;          
-    gap: 15px;              
+    gap: 15px;             
 }
 
 .categories,
@@ -26,12 +26,23 @@ h1 {
     align-items: center;
 }
 
-.categories {
+.categories-box {
     margin-top: 24px;
+    padding: 18px 20px;
+    background: #e9f2ff;
+    border: 1px solid #d5e5ff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.categories {
+    margin-top: 0;
 }
 
 .categories h2 {
     margin: 0;
+    font-size: 18px;
+    color: #123a78;
 }
 
 .assignment-row {
@@ -56,17 +67,15 @@ h1 {
 }
 
 .tab-content {
-    margin-top: 20px;
+    margin-top: 14px;
 }
 
-/* TAB CONTAINER LINE */
 .button-row {
     display: flex;
     gap: 20px;
     border-bottom: 2px solid #ddd;
 }
 
-/* TAB BASE */
 .tab {
     background: none;
     border: none;
@@ -78,7 +87,6 @@ h1 {
     transition: color 0.2s ease, border-color 0.2s ease;
 }
 
-/* ACTIVE TAB */
 .tab.active {
     color: #1f4fb3;
     border-bottom: 3px solid #1f4fb3;
@@ -86,7 +94,6 @@ h1 {
     background: transparent;
 }
 
-/* HOVER */
 .tab:hover {
     color: #2d6cdf;
 }
