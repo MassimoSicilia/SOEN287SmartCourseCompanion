@@ -77,28 +77,9 @@
         <input type="submit" value="Sign Up" />
       </form>
     </div>
-    <script>
-      // JavaScript to toggle the visibility of the Student ID field based on account type selection
-      document
-        .getElementById("isStudent")
-        .addEventListener("change", function () {
-          document.getElementById("IdDiv").style.display = this.checked
-            ? "block"
-            : "none";
-        });
 
-      document
-        .getElementById("isInstructor")
-        .addEventListener("change", function () {
-          document.getElementById("IdDiv").style.display = "none";
-        });
-
-      document
-        .getElementById("signUpForm")
-        .addEventListener("submit", function (event) {
-          event.preventDefault();
-          window.location.href = "dashboardStudent.html";
-        });
-    </script>
+    <script src="../javascript/signUp.js" defer></script>
+    <script src="../javascript/account.js" defer></script>
+    <script src="../javascript/AccountStore.js" defer></script>
   </body>
 </html>
