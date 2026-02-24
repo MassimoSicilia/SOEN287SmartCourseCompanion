@@ -17,3 +17,19 @@ if (menuCloseButton) {
         menuButton.setAttribute("aria-expanded", "false");
     });
 }
+
+document.getElementById("dashboard-menu-item").onclick = function() {
+    window.location.href = "dashboardStudent.html";
+}
+
+document.getElementById("specific-course-menu-item").onclick = function() {
+    window.location.href = "courseStudent.html";
+}
+
+document.getElementById("grades-menu-item").onclick = function() {
+    window.location.href = "gradesStudent.html";
+}
+
+document.getElementById("analytics-menu-item").onclick = function() {
+    window.location.href = "analyticsStudent.html";
+}
