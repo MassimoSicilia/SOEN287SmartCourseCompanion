@@ -228,15 +228,20 @@ body {
   height: calc(var(--analytics-panel-height) - 90px);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  align-items: end;
+  align-items: stretch;
+  justify-items: center;
   gap: 1rem;
 }
 
 .grade-bar-column {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  align-items: end;
+  justify-items: center;
   gap: 0.6rem;
+  height: 100%;
+  min-height: 0;
+  width: 100%;
 }
 
 .course-name {
@@ -249,7 +254,9 @@ body {
 
 .bar-track-vertical {
   width: 56px;
-  height: 220px;
+  height: 100%;
+  max-height: 220px;
+  min-height: 120px;
   background: #e2e8f0;
   border-radius: 14px;
   overflow: hidden;
@@ -283,6 +290,7 @@ body {
 
   .bar-track-vertical {
     height: 180px;
+    max-height: 180px;
   }
 
   #gradeDiv {
@@ -296,8 +304,9 @@ body {
   flex-direction: column;
   gap: 1rem;
   padding: 0;
-  height: var(--analytics-panel-height);
-  max-height: var(--analytics-panel-height);
+  align-self: stretch;
+  height: auto;
+  max-height: none;
 }
 
 #TotalGradeSection {
