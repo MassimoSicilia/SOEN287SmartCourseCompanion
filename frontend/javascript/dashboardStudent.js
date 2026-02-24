@@ -1,6 +1,15 @@
 const addCourseButton = document.getElementById("add-course-btn");
 const addCourseModal = document.getElementById("addCourseModal");
 const closeAddCourseModal = document.getElementById("closeAddCourseModal");
+const courseCards = document.querySelectorAll(".course-card");
+
+if (courseCards) {
+  courseCards.forEach((card) => {
+    card.addEventListener("click", () => {
+      window.location.href = "courseStudent.html";
+    });
+  });
+}
 
 if (addCourseButton) {
   addCourseButton.onclick = function () {
