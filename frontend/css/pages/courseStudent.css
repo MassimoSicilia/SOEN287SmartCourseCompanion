@@ -9,8 +9,31 @@ body {
     text-align: left;
 }
 
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
 h1 {
     margin-bottom: 20px;
+}
+
+.sort-due-btn {
+    border: 1px solid #b7cdf2;
+    background: #e9f2ff;
+    color: #123a78;
+    border-radius: 999px;
+    padding: 10px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.sort-due-btn:hover {
+    background: #dcecff;
 }
 
 .button-row {
