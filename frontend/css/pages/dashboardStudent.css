@@ -127,6 +127,11 @@ body{
     transition: transform 0.25s ease, opacity 0.25s ease;
 }
 
+#dashboard-menu-item:hover, #specific-course-menu-item:hover, #grades-menu-item:hover, #analytics-menu-item:hover{
+    cursor: pointer;
+    background-color: rgb(235, 235, 235);
+}
+
 .menu-button span:nth-child(1){
     top: 0;
 }
