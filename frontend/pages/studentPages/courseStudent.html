@@ -1,0 +1,54 @@
+<!DOCTYPE html> 
+<html>
+<head>
+    <link rel="stylesheet" href="../../css/pages/courseStudent.css">
+    <script src="../../js%20pages/courseStudent.js" defer></script>
+</head>
+
+<body>
+    <div class="container">
+        <h1 id="course-title">SOEN 287</h1>
+
+        <div class="button-row">
+            <button id="inProgressBtn" class="tab">In progress</button>
+            <button id="completedBtn" class="tab">Completed</button>
+        </div>
+
+        <div class="categories-box">
+            <div class = "categories">
+                <h2>Name</h2>
+                <h2>Weight</h2>
+                <h2>Due Date</h2>
+                <h2>Grade</h2>
+                <h2>Status</h2>
+            </div>
+        </div>
+
+        <div id="inProgressContent" class="tab-content">
+            <div class="assignment-row">
+                <div>Quiz 1</div>
+                <div>10%</div>
+                <div>2026-03-01</div>
+                <input type="text" placeholder="e.g. 85%" class="cell-input">
+                <select class="cell-input">
+                    <option value="">Select status</option>
+                    <option>Not started</option>
+                    <option>In progress</option>
+                    <option>Submitted</option>
+                </select>
+            </div>
+        </div>
+        <div id="completedContent" class="tab-content">
+            <div class="assignment-row">
+                <div>Assignment 1</div>
+                <div>20%</div>
+                <div>2026-02-21</div>
+                <div>85%</div>
+                <div>Submitted</div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
