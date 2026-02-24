@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Analytics</title>
+    <link rel="stylesheet" href="/frontend/css/pages/analyticsStudent.css" />
+    <script src="/frontend/javascript/analyticsStudent.js" defer></script>
+  </head>
+  <body>
+    <div class="analytics-header">
+      <div id="off-screen-menu" class="off-screen-menu">
+        <div class="off-screen-panel">
+          <div class="sidebar-header">
+            <button
+              id="menu-close-button"
+              class="menu-button is-open"
+              aria-label="Close menu"
+              type="button"
+            >
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+          </div>
+          <ul>
+            <li>home</li>
+            <li>about</li>
+            <li>contact</li>
+            <li>analytics</li>
+          </ul>
+        </div>
+      </div>
+      <div class="analytics-left">
+        <nav class="analytics-nav">
+          <button
+            id="menu-button"
+            class="menu-button"
+            aria-label="Open menu"
+            type="button"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+        </nav>
+        <div class="analytics-title">
+          <h1>Analytics</h1>
+        </div>
+      </div>
+      <div class="analytics-user-icon-div">
+        <img
+          class="analytics-user-icon-img"
+          src="../../assets/icons/user-icon.png"
+          alt="User Icon"
+        />
+      </div>
+    </div>
+
+    <div class="analyticsContainer">
+      <section id="courseGradeBarGraph" class="grade-graph-card">
+        <h2>Current Grade by Course</h2>
+        <div
+          id="barChartContainer"
+          aria-label="Bar chart showing grades per course"
+        ></div>
+      </section>
+      <div id="gradeDiv">
+        <section id="TotalGradeSection" class="grade-graph-card">
+          <h2>Current Average</h2>
+          <div
+            id="totalGradeContainer"
+            aria-label="Circular progress bar showing total grade"
+            class="circularProgress"
+            aria-valuemax="100"
+            aria-valuemin="0"
+            aria-valuenow="87"
+            style="--value: 87"
+            role="progressbar"
+          >
+            <p>87%</p>
+          </div>
+        </section>
+        <section id="GPAsection" class="grade-graph-card">
+          <h2>GPA</h2>
+          <div id="gpaContainer" aria-label="Circular progress bar showing GPA">
+            <p>3.5</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </body>
+</html>
