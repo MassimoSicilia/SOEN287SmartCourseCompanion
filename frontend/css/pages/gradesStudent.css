@@ -24,6 +24,8 @@ h1 {
 }
 
 .course-row-box {
+    --grade-col: 90px;
+    --weight-col: 90px;
     background: #ffffff;
     border: 1px solid #d8d8d8;
     border-radius: 12px;
@@ -46,6 +48,22 @@ h1 {
     color: #123a78;
 }
 
+.course-box-columns {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 3px solid #123a78;
+    display: grid;
+    grid-template-columns: 1fr var(--grade-col) var(--weight-col);
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    color: #000;
+}
+
+.course-box-columns span:nth-child(1) { text-align: left; }
+.course-box-columns span:nth-child(2),
+.course-box-columns span:nth-child(3) { text-align: right; }
+
 .category-list {
     list-style: none;
     margin: 0;
@@ -56,16 +74,33 @@ h1 {
 }
 
 .category-list li {
+    display: grid;
+    grid-template-columns: 1fr var(--grade-col) var(--weight-col);
+    align-items: center;
+    gap: 12px;
     padding: 10px 0;
     border-bottom: 1px solid #eee;
     font-size: 15px;
     color: #333;
 }
 
+.col-assessment,
+.col-assessment-name { text-align: left; }
+
+.col-grade,
+.col-weight,
+.col-grade-value,
+.col-weight-value,
+.weight-value {
+    text-align: right;
+    min-width: 56px;
+    white-space: nowrap;
+}
+
 .category-list li:last-child {
     border-bottom: none;
     margin-top: auto;
-    border-top: 3px solid #000;
+    border-top: 3px solid #123a78;
 }
 
 .category-list li:nth-last-child(2) {
