@@ -1,0 +1,362 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
+:root{
+    --header-height: 72px;
+    --primary-blue: #040b51;
+    --primary-blue-600: #1d4ed8;
+    --bg-main: #eef3ff;
+    --bg-surface: #ffffff;
+    --border-soft: #d9e2f2;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --success-bg: #dcfce7;
+    --success-text: #166534;
+    --info-bg: #dbeafe;
+    --info-text: #1d4ed8;
+}
+
+body{
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(180deg, #eaf0ff 0%, var(--bg-main) 45%, #f7f9ff 100%);
+    color: var(--text-main);
+}
+
+.dashboard-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: var(--header-height);
+    background-color: var(--primary-blue);
+    box-shadow: 0 8px 20px rgba(4, 11, 81, 0.25);
+    position: relative;
+    z-index: 1200;
+}
+
+.dashboard-left{
+    display: flex;
+    align-items: center;
+}
+
+.off-screen-menu{
+    position: fixed;
+    inset: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(8, 15, 40, 0.38);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    visibility: hidden;
+    z-index: 1400;
+    pointer-events: none;
+}
+
+.off-screen-menu.is-open{
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.off-screen-panel{
+    width: 260px;
+    height: 100%;
+    background: #ffffff;
+    padding: 0;
+    box-shadow: 8px 0 24px rgba(0,0,0,0.2);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.off-screen-menu.is-open .off-screen-panel{
+    transform: translateX(0);
+}
+
+.dashboard-nav{
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-header{
+    min-height: var(--header-height);
+    background: var(--primary-blue);
+    display: flex;
+    align-items: center;
+}
+
+.off-screen-panel ul{
+    list-style: none;
+    margin: 0;
+    padding: 14px 16px;
+}
+
+.off-screen-panel li{
+    padding: 10px 0;
+}
+
+.menu-button{
+    width: 22px;
+    height: 16px;
+    padding: 0;
+    border: 0;
+    background: none;
+    position: relative;
+    cursor: pointer;
+    margin-left: 10px;
+    z-index: 1201;
+}
+
+.menu-button.is-open{
+    position: fixed;
+    top: 24px;
+    left: 20px;
+    margin-left: 0;
+}
+
+.menu-button span{
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #ffffff;
+    border-radius: 2px;
+    transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.menu-button span:nth-child(1){
+    top: 0;
+}
+
+.menu-button span:nth-child(2){
+    top: 7px;
+}
+
+.menu-button span:nth-child(3){
+    top: 14px;
+}
+
+.menu-button.is-open span:nth-child(1){
+    transform: translateY(7px) rotate(45deg);
+}
+
+.menu-button.is-open span:nth-child(2){
+    opacity: 0;
+}
+
+.menu-button.is-open span:nth-child(3){
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+.sidebar-header .menu-button.is-open{
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-left: 20px;
+    z-index: 1500;
+}
+
+.dashboard-title{
+    color: #ffffff;
+    padding-left: 1%;
+    padding-right: 1%;
+}
+
+.dashboard-title h1{
+    font-family: "Outfit", "Manrope", sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.dashboard-user-icon-img{
+    width: 50px;
+    height: 50px;
+    margin-right: 10px;
+    filter: brightness(0) invert(1);
+}
+
+.dashboard-user-icon-div{
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.dashboard-user-icon-div:hover{
+    cursor: pointer;
+}
+
+.upcoming-assessments-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0.1;
+    padding: 22px 0 10px;
+}
+
+.upcoming-assessments-box{
+    background-color: var(--bg-surface);
+    border-color: var(--border-soft);
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 14px;
+    width: min(1100px, 92%);
+    min-height: 50%;
+    padding: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.assessments-list-header h2{
+    margin: 0 0 10px;
+    font-size: 20px;
+    color: var(--text-main);
+    font-family: "Outfit", "Manrope", sans-serif;
+}
+
+.assignment-row{
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 8px;
+    border-top: 1px solid #e4ebf7;
+    color: var(--text-main);
+    font-size: 14px;
+}
+
+.assignment-row-head{
+    font-weight: 600;
+    color: var(--text-muted);
+    border-top: 0;
+    padding-top: 4px;
+}
+
+.status-pill{
+    display: inline-block;
+    width: fit-content;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background-color: var(--success-bg);
+    color: var(--success-text);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pill.in-progress{
+    background-color: var(--info-bg);
+    color: var(--info-text);
+}
+
+.courses-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.courses-title{
+    padding-left: 1%;
+    padding-right: 1%;
+}
+
+.courses-title h2{
+    font-family: "Outfit", "Manrope", sans-serif;
+    font-weight: 700;
+    margin: -20px 0 0;
+}
+
+.courses-div{
+    width: min(1100px, 92%);
+    margin: 24px auto 30px;
+    min-height: 320px;
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    padding: 8px 0 12px;
+    position: relative;
+}
+
+.courses-div::before{
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 2%;
+    right: 2%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c8d6f2, transparent);
+}
+
+.add-courses-button {
+  padding: 8px 14px;
+  border: 1px solid #bcd0f3;
+  border-radius: 6px;
+  background: #f8fbff;
+  color: var(--primary-blue);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10%;
+}
+
+.add-courses-button:hover {
+ transform: translateY(-1px);
+ background: #eef4ff;
+ border-color: #9db7eb;
+}
+
+.add-courses-button:active {
+ background-color: #e7efff;
+ border-color: #86a6e6;
+ box-shadow: rgba(29, 78, 216, 0.15) 0 2px 4px;
+ color: #173f9e;
+ transform: translateY(0);
+}
+
+.courses-list{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 0 12px 12px;
+}
+
+.course-card{
+    background-color: var(--bg-surface);
+    border-color: var(--border-soft);
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 12px;
+    box-sizing: border-box;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    flex: 0 0 calc(50% - 6px);
+    max-width: calc(50% - 6px);
+    min-width: 0;
+    margin: 0;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+}
+
+.course-card h3{
+    margin: 0;
+    font-size: 15px;
+    font-family: "Outfit", "Manrope", sans-serif;
+    font-weight: 600;
+}
+
+.course-card p{
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.course-label{
+    color: var(--text-main);
+    font-weight: 600;
+}

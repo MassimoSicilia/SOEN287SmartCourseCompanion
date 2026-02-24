@@ -1,0 +1,201 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
+  overflow: hidden;
+  background-color: #040b51;
+  background-image:
+    radial-gradient(
+      circle at 16% 18%,
+      rgba(54, 93, 230, 0.34) 0%,
+      rgba(4, 11, 81, 0) 36%
+    ),
+    radial-gradient(
+      circle at 82% 82%,
+      rgba(24, 132, 224, 0.22) 0%,
+      rgba(4, 11, 81, 0) 40%
+    ),
+    linear-gradient(145deg, #040b51 0%, #071160 50%, #040b51 100%);
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  width: 58vmax;
+  height: 58vmax;
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+body::before {
+  top: -22vmax;
+  left: -20vmax;
+  background: rgba(41, 116, 255, 0.22);
+}
+
+body::after {
+  right: -20vmax;
+  bottom: -24vmax;
+  background: rgba(11, 159, 226, 0.18);
+}
+a {
+  cursor: pointer;
+}
+
+.loginContainer {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 380px);
+  background: #f8fbff;
+  border: 1px solid rgba(20, 70, 110, 0.16);
+  border-radius: 10px;
+  box-shadow: 20px 20px 20px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+}
+
+.loginContainer h2 {
+  text-align: center;
+  color: #0f3a5c;
+  font-family: "Outfit", "Manrope", sans-serif;
+}
+#loginForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+label {
+  font-weight: 700;
+  color: #0f3a5c;
+}
+
+div {
+  display: flex;
+  flex-direction: column;
+}
+#createAccountContainer {
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+#loginForm input[type="submit"] {
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: 9px;
+  padding: 0.65rem 0.9rem;
+  background: #1573b5;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+#loginForm input[type="password"] {
+  margin-top: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(
+        120deg,
+        #1a4d8f 0%,
+        #0a2f63 28%,
+        #2d6bb1 50%,
+        #0a2f63 72%,
+        #1a4d8f 100%
+      )
+      border-box;
+  background-size:
+    100% 100%,
+    240% 100%;
+  background-position:
+    0 0,
+    180% 0;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#loginForm input[type="text"] {
+  margin-top: 0.2rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-weight: 700;
+  background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(
+        120deg,
+        #1a4d8f 0%,
+        #0a2f63 28%,
+        #2d6bb1 50%,
+        #0a2f63 72%,
+        #1a4d8f 100%
+      )
+      border-box;
+  background-size:
+    100% 100%,
+    240% 100%;
+  background-position:
+    0 0,
+    180% 0;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#loginForm input[type="submit"]:hover {
+  background: #0e5f98;
+  transform: translateY(-2px);
+}
+
+#loginForm input[type="password"]:hover {
+  transform: translateY(-2px);
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.2);
+}
+
+#loginForm input[type="text"]:hover {
+  transform: translateY(-2px);
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.2);
+}
+
+#loginForm input[type="password"]:focus,
+#loginForm input[type="text"]:focus {
+  outline: none;
+  animation: blueBorderPulse 1.05s linear infinite;
+  box-shadow: 0 0 0 3px rgba(10, 47, 99, 0.25);
+}
+
+@keyframes blueBorderPulse {
+  from {
+    background-position:
+      0 0,
+      180% 0;
+  }
+  to {
+    background-position:
+      0 0,
+      -40% 0;
+  }
+}
