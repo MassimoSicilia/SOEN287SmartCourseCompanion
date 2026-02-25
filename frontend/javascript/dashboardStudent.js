@@ -1,5 +1,4 @@
 const addCourseButton = document.getElementById("add-course-btn");
-<<<<<<< HEAD
 const addCourseModal = document.getElementById("addCourseModal");
 const closeAddCourseModal = document.getElementById("closeAddCourseModal");
 const courseCards = document.querySelectorAll(".course-card");
@@ -50,10 +49,9 @@ if (menuCloseButton && menuButton && offScreenMenu) {
     offScreenMenu.classList.remove("is-open");
     menuButton.setAttribute("aria-expanded", "false");
   });
-=======
-if (addCourseButton) {
-  addCourseButton.onclick = function () {
-    window.location.href = "addCourse.html";
-  };
->>>>>>> d010159a765efccf56f3b1e82b8451544941d3af
+  if (addCourseButton) {
+    addCourseButton.onclick = function () {
+      window.location.href = "addCourse.html";
+    };
+  }
 }
