@@ -3,59 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Student Analytics</title>
-    <link rel="stylesheet" href="/frontend/css/pages/analyticsStudent.css" />
-    <script src="/frontend/javascript/analyticsStudent.js" defer></script>
+    <title>Smart Course Companion | Student Analytics</title>
+    <link rel="stylesheet" href="../../css/pages/header.css" />
+    <link rel="stylesheet" href="../../css/pages/analyticsStudent.css" />
+    <script src="../../javascript/headerStudent.js" defer></script>
+    <script src="../../javascript/analyticsStudent.js" defer></script>
   </head>
   <body>
-    <div class="analytics-header">
-      <div id="off-screen-menu" class="off-screen-menu">
-        <div class="off-screen-panel">
-          <div class="sidebar-header">
-            <button
-              id="menu-close-button"
-              class="menu-button is-open"
-              aria-label="Close menu"
-              type="button"
-            >
-              <span></span>
-              <span></span>
-              <span></span>
-            </button>
-          </div>
-          <ul>
-            <li>home</li>
-            <li>about</li>
-            <li>contact</li>
-            <li>analytics</li>
-          </ul>
-        </div>
-      </div>
-      <div class="analytics-left">
-        <nav class="analytics-nav">
-          <button
-            id="menu-button"
-            class="menu-button"
-            aria-label="Open menu"
-            type="button"
-          >
-            <span></span>
-            <span></span>
-            <span></span>
-          </button>
-        </nav>
-        <div class="analytics-title">
-          <h1>Analytics</h1>
-        </div>
-      </div>
-      <div class="analytics-user-icon-div">
-        <img
-          class="analytics-user-icon-img"
-          src="../../assets/icons/user-icon.png"
-          alt="User Icon"
-        />
-      </div>
-    </div>
+    <div id="site-header" data-header-title="Analytics" data-active-menu="analytics"></div>
 
     <div class="analyticsContainer">
       <section id="courseGradeBarGraph" class="grade-graph-card">
