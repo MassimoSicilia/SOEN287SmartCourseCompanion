@@ -93,6 +93,84 @@ h1 {
     font-size: 16px;
 }
 
+.add-assessment-row > div:first-child {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.add-assessment-plus {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid #b7cdf2;
+    background: var(--panel-tint);
+    color: var(--primary-blue);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+}
+
+.add-assessment-plus:hover {
+    background: #dcecff;
+}
+
+.add-assessment-plus:focus-visible {
+    outline: 2px solid var(--primary-blue-600);
+    outline-offset: 2px;
+}
+
+.assessment-input {
+    width: 100%;
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-family: inherit;
+    color: var(--text-main);
+    background: #fff;
+}
+
+.assessment-input:focus {
+    outline: none;
+    border-color: #b7cdf2;
+    box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.assessment-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    width: 100%;
+}
+
+.add-assessment-form > div:last-child {
+    justify-self: end;
+    width: 100%;
+}
+
+.assessment-actions button {
+    border: 1px solid #b7cdf2;
+    background: var(--panel-tint);
+    color: var(--primary-blue);
+    border-radius: 999px;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.assessment-actions button:hover {
+    background: #dcecff;
+}
+
 .button-row {
     display: flex;
     gap: 20px;
