@@ -137,6 +137,10 @@ h1 {
     font-weight: 700;
 }
 
+.empty-assessment-row span {
+    visibility: hidden;
+}
+
 .category-list li:last-child {
     border-bottom: none;
     margin-top: auto;
