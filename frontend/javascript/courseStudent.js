@@ -2,6 +2,32 @@ const inProgressBtn = document.getElementById("inProgressBtn");
 const completedBtn = document.getElementById("completedBtn");
 const inProgressContent = document.getElementById("inProgressContent");
 const completedContent = document.getElementById("completedContent");
+const sortDueDateBtn = document.getElementById("sortDueDateBtn");
+
+function parseDueDateValue(value) {
+  const timestamp = Date.parse(String(value).trim());
+  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+}
+
+function sortRowsByDueDate(container) {
+  if (!container) {
+    return;
+  }
+
+  const rows = Array.from(container.querySelectorAll(":scope > .assignment-row"));
+  rows.sort((a, b) => {
+    const aDate = parseDueDateValue(a.children[2]?.textContent ?? "");
+    const bDate = parseDueDateValue(b.children[2]?.textContent ?? "");
+    return aDate - bDate;
+  });
+
+  rows.forEach((row) => container.appendChild(row));
+}
+
+function sortStudentAssignmentsByDueDate() {
+  sortRowsByDueDate(inProgressContent);
+  sortRowsByDueDate(completedContent);
+}
 
 function createCell(text) {
   const cell = document.createElement("div");
@@ -103,6 +129,10 @@ if (inProgressBtn && completedBtn) {
 if (inProgressContent) {
   inProgressContent.addEventListener("change", handleStatusChange);
   inProgressContent.addEventListener("input", handleInProgressInput);
+}
+
+if (sortDueDateBtn) {
+  sortDueDateBtn.addEventListener("click", sortStudentAssignmentsByDueDate);
 }
 
 setActiveTab(false);
