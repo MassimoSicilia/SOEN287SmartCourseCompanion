@@ -82,7 +82,8 @@ async function loadSharedHeader() {
   }
 
   try {
-    const response = await fetch("header.html");
+    const headerSource = headerContainer.dataset.headerSrc || "headerStudent.html";
+    const response = await fetch(headerSource);
     if (!response.ok) {
       throw new Error(`Header load failed with status ${response.status}`);
     }
