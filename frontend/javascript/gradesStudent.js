@@ -3,6 +3,47 @@ function parsePercent(text) {
   return Number.isFinite(value) ? value : null;
 }
 
+const EXPECTED_ASSESSMENT_ROWS = 6;
+
+function createSpacerRow() {
+  const row = document.createElement("li");
+  row.className = "empty-assessment-row";
+  row.setAttribute("aria-hidden", "true");
+  row.innerHTML = `
+    <span class="col-assessment-name">&nbsp;</span>
+    <span>&nbsp;</span>
+    <span>&nbsp;</span>
+  `;
+  return row;
+}
+
+function normalizeCourseCardRows() {
+  const courseCards = document.querySelectorAll(".course-row-box");
+
+  courseCards.forEach((card) => {
+    const list = card.querySelector(".category-list");
+    const summaryRow = list?.querySelector(".course-summary-row");
+    if (!list || !summaryRow) {
+      return;
+    }
+
+    list.querySelectorAll(".empty-assessment-row").forEach((row) => row.remove());
+
+    const assessmentRows = Array.from(list.querySelectorAll(":scope > li")).filter(
+      (row) =>
+        row !== summaryRow &&
+        !row.classList.contains("empty-assessment-row") &&
+        row.querySelector(".col-grade-value") &&
+        row.querySelector(".col-weight-value")
+    );
+
+    const missingRows = Math.max(0, EXPECTED_ASSESSMENT_ROWS - assessmentRows.length);
+    for (let i = 0; i < missingRows; i++) {
+      list.insertBefore(createSpacerRow(), summaryRow);
+    }
+  });
+}
+
 function calculateTotalWeight() {
   const courseCards = document.querySelectorAll(".course-row-box");
 
@@ -80,10 +121,17 @@ function calculateAverage() {
   });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+function refreshGradesCards() {
+  normalizeCourseCardRows();
   calculateTotalWeight();
   calculateAverage();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  refreshGradesCards();
 });
 
 window.calculateAverage = calculateAverage;
 window.calculateTotalWeight = calculateTotalWeight;
+window.normalizeCourseCardRows = normalizeCourseCardRows;
+window.refreshGradesCards = refreshGradesCards;
