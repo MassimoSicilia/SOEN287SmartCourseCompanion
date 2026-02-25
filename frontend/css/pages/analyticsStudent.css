@@ -23,12 +23,7 @@ body {
   display: flex;
   flex-direction: column;
   font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(
-    180deg,
-    #eaf0ff 0%,
-    var(--bg-main) 45%,
-    #f7f9ff 100%
-  );
+  background: var(--bg-main);
   color: var(--text-main);
 }
 
@@ -208,12 +203,7 @@ body {
   content: "";
   position: absolute;
   inset: var(--thickness);
-  background: linear-gradient(
-    180deg,
-    #eaf0ff 0%,
-    var(--bg-main) 45%,
-    #f7f9ff 100%
-  );
+  background: var(--bg-main);
   border-radius: 50%;
 }
 
