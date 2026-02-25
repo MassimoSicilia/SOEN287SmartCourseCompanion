@@ -2,13 +2,13 @@ body {
     font-family: Arial, sans-serif;
     background: #f4f4f4;
     margin: 0;
-    padding: 40px;
+    padding: 0;
 }
 
 .container {
     text-align: left;
+    padding: 40px 40px 12px;
     margin-bottom: 20px;
-    padding-bottom: 12px;
     border-bottom: 2px solid #ddd;
 }
 
@@ -21,6 +21,7 @@ h1 {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
     align-items: stretch;
+    padding: 0 40px 40px;
 }
 
 .course-row-box {
