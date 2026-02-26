@@ -24,6 +24,7 @@ if (addCourseButton) {
 if (closeAddCourseModal && addCourseModal) {
   closeAddCourseModal.onclick = function () {
     addCourseModal.classList.remove("is-open");
+    document.body.style.overflow = "auto";
   };
 
   addCourseModal.addEventListener("click", (event) => {
