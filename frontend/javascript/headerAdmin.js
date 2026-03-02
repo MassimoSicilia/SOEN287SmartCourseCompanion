@@ -24,21 +24,21 @@ function initializeHeaderBehavior(container) {
   const dashboardMenuItem = document.getElementById("dashboard-menu-item");
   if (dashboardMenuItem) {
     dashboardMenuItem.onclick = function () {
-      window.location.href = "dashboardStudent.html";
+      window.location.href = "dashboardAdmin.html";
     };
   }
 
   const specificCourseMenuItem = document.getElementById("specific-course-menu-item");
   if (specificCourseMenuItem) {
     specificCourseMenuItem.onclick = function () {
-      window.location.href = "courseStudent.html";
+      window.location.href = "courseAdmin.html";
     };
   }
 
   const signOutMenuItem = document.getElementById("sign-out-menu-item");
   if (signOutMenuItem) {
     signOutMenuItem.onclick = function () {
-      window.location.href = "login.html";
+      window.location.href = "../studentPages/login.html";
     };
   }
 
