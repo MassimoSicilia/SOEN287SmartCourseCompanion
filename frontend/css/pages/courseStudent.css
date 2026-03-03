@@ -37,7 +37,7 @@ h1 {
     margin-bottom: 20px;
 }
 
-.sort-due-btn {
+.sort-due-btn, .edit-grades-btn {
     border: 1px solid #b7cdf2;
     background: var(--panel-tint);
     color: var(--primary-blue);
@@ -49,7 +49,7 @@ h1 {
     white-space: nowrap;
 }
 
-.sort-due-btn:hover {
+.sort-due-btn:hover, .edit-grades-btn:hover {
     background: #dcecff;
 }
 
