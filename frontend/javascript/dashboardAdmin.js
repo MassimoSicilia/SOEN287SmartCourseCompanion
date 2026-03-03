@@ -5,6 +5,23 @@ const closeCreateCourseModal = document.getElementById(
 );
 const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
+const courseCards = document.querySelectorAll(".course-card");
+
+function addCourseCardClickHandler(card) {
+  if (!card) {
+    return;
+  }
+
+  card.addEventListener("click", () => {
+    window.location.href = "courseAdmin.html";
+  });
+}
+
+if (courseCards) {
+  courseCards.forEach((card) => {
+    addCourseCardClickHandler(card);
+  });
+}
 
 function closeModal() {
   if (!createCourseModal) {
@@ -57,6 +74,7 @@ if (createCourseForm && coursesList) {
       <p><span class="course-label">Term:</span> ${term}</p>
     `;
 
+    addCourseCardClickHandler(newCard);
     coursesList.prepend(newCard);
     createCourseForm.reset();
     closeModal();
