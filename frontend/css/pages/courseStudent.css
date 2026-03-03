@@ -37,7 +37,7 @@ h1 {
     margin-bottom: 20px;
 }
 
-.sort-due-btn, .edit-grades-btn {
+.sort-due-btn {
     border: 1px solid #b7cdf2;
     background: var(--panel-tint);
     color: var(--primary-blue);
@@ -49,7 +49,7 @@ h1 {
     white-space: nowrap;
 }
 
-.sort-due-btn:hover, .edit-grades-btn:hover {
+.sort-due-btn:hover {
     background: #dcecff;
 }
 
@@ -105,6 +105,29 @@ h1 {
     border: 1px solid #ccc;
     border-radius: 6px;
     box-sizing: border-box;
+}
+
+.completed-status-cell {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.undo-btn {
+    border: 1px solid #b7cdf2;
+    background: var(--panel-tint);
+    color: var(--primary-blue);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.undo-btn:hover {
+    background: #dcecff;
 }
 
 .tab-content {
