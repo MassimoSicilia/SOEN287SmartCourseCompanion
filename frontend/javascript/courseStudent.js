@@ -181,6 +181,15 @@ function handleStatusChange(event) {
     return;
   }
 
+  if (!strictCoursePercent(gradeInput)) {
+    target.value = "";
+    if (gradeInput instanceof HTMLInputElement) {
+      gradeInput.reportValidity();
+      gradeInput.focus();
+    }
+    return;
+  }
+
   clearGradeError(gradeInput);
   moveRowToCompleted(row);
 }
@@ -194,6 +203,43 @@ function handleInProgressInput(event) {
   if (target.matches('input[type="text"]')) {
     clearGradeError(target);
   }
+}
+
+function handleInProgressBlur(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+
+  if (target.matches('input[type="text"]')) {
+    strictCoursePercent(target);
+  }
+}
+
+function getGradeInput(targetOrEvent) {
+  if (targetOrEvent instanceof HTMLInputElement) {
+    return targetOrEvent;
+  }
+
+  if (
+    targetOrEvent &&
+    targetOrEvent.target &&
+    targetOrEvent.target instanceof HTMLInputElement
+  ) {
+    return targetOrEvent.target;
+  }
+
+  return null;
+}
+
+function removePercentSymbol(value) {
+  const trimmedValue = value.trim();
+
+  if (trimmedValue.endsWith("%")) {
+    return trimmedValue.slice(0, -1).trim();
+  }
+
+  return trimmedValue;
 }
 
 function setActiveTab(showCompleted) {
@@ -220,6 +266,7 @@ if (inProgressBtn && completedBtn) {
 if (inProgressContent) {
   inProgressContent.addEventListener("change", handleStatusChange);
   inProgressContent.addEventListener("input", handleInProgressInput);
+  inProgressContent.addEventListener("focusout", handleInProgressBlur);
 }
 
 if (sortDueDateBtn) {
@@ -231,3 +278,29 @@ if (editGradesBtn) {
 }
 
 setActiveTab(false);
+
+function strictCoursePercent(event) {
+  const gradeInput = getGradeInput(event);
+
+  if (!gradeInput) {
+    return false;
+  }
+
+  const rawValue = gradeInput.value.trim();
+  if (!rawValue) {
+    gradeInput.setCustomValidity("Please enter a grade between 0 and 100.");
+    return false;
+  }
+
+  const cleanedValue = removePercentSymbol(rawValue);
+  const numericValue = Number(cleanedValue);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+    gradeInput.setCustomValidity("Please enter a valid number between 0 and 100.");
+    return false;
+  }
+
+  gradeInput.setCustomValidity("");
+  gradeInput.value = `${numericValue}%`;
+  return true;
+}
