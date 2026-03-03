@@ -3,8 +3,7 @@ const completedBtn = document.getElementById("completedBtn");
 const inProgressContent = document.getElementById("inProgressContent");
 const completedContent = document.getElementById("completedContent");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
-const editGradesBtn = document.getElementById("editGrades");
-let isEditingCompletedGrades = false;
+const STATUS_OPTIONS = ["Not started", "In progress", "Submitted"];
 
 function parseDueDateValue(value) {
   const timestamp = Date.parse(String(value).trim());
@@ -37,6 +36,93 @@ function createCell(text) {
   return cell;
 }
 
+function createStatusSelect(selectedValue = "") {
+  const select = document.createElement("select");
+  select.className = "cell-input";
+
+  const placeholderOption = document.createElement("option");
+  placeholderOption.value = "";
+  placeholderOption.textContent = "Incomplete";
+  select.appendChild(placeholderOption);
+
+  STATUS_OPTIONS.forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = status;
+    select.appendChild(option);
+  });
+
+  select.value = selectedValue;
+  return select;
+}
+
+function createCompletedStatusCell(statusText = "Submitted") {
+  const statusCell = document.createElement("div");
+  statusCell.className = "completed-status-cell";
+
+  const statusLabel = document.createElement("span");
+  statusLabel.textContent = statusText;
+
+  const undoBtn = document.createElement("button");
+  undoBtn.type = "button";
+  undoBtn.className = "undo-btn";
+  undoBtn.dataset.action = "undo-submitted";
+  undoBtn.textContent = "Undo";
+
+  statusCell.append(statusLabel, undoBtn);
+  return statusCell;
+}
+
+function moveRowToInProgress(row) {
+  if (!row || !inProgressContent) {
+    return;
+  }
+
+  const name = row.children[0]?.textContent?.trim() ?? "";
+  const weight = row.children[1]?.textContent?.trim() ?? "";
+  const dueDate = row.children[2]?.textContent?.trim() ?? "";
+  const grade = row.children[3]?.textContent?.trim() ?? "";
+
+  row.innerHTML = "";
+  row.append(
+    createCell(name),
+    createCell(weight),
+    createCell(dueDate)
+  );
+
+  const gradeInput = document.createElement("input");
+  gradeInput.type = "text";
+  gradeInput.placeholder = "e.g. 85%";
+  gradeInput.className = "cell-input";
+  gradeInput.value = grade;
+
+  row.append(gradeInput, createStatusSelect("In progress"));
+  inProgressContent.appendChild(row);
+}
+
+function decorateCompletedRow(row) {
+  if (!row) {
+    return;
+  }
+
+  const statusCell = row.children[4];
+  if (!statusCell || statusCell.querySelector(".undo-btn")) {
+    return;
+  }
+
+  const statusText = statusCell.textContent.trim() || "Submitted";
+  statusCell.replaceWith(createCompletedStatusCell(statusText));
+}
+
+function decorateCompletedRows() {
+  if (!completedContent) {
+    return;
+  }
+
+  const rows = completedContent.querySelectorAll(":scope > .assignment-row");
+  rows.forEach((row) => decorateCompletedRow(row));
+}
+
 function normalizeGradeText(value) {
   const trimmed = String(value).trim();
   if (!trimmed) {
@@ -52,73 +138,6 @@ function normalizeGradeText(value) {
   }
 
   return trimmed;
-}
-
-function setEditGradesButtonVisibility(showCompleted) {
-  if (!editGradesBtn) {
-    return;
-  }
-
-  editGradesBtn.style.display = showCompleted ? "inline-flex" : "none";
-}
-
-function enterCompletedGradesEditMode() {
-  if (!completedContent) {
-    return;
-  }
-
-  const rows = completedContent.querySelectorAll(":scope > .assignment-row");
-  rows.forEach((row) => {
-    const gradeCell = row.children[3];
-    if (!gradeCell || gradeCell.querySelector("input")) {
-      return;
-    }
-
-    const input = document.createElement("input");
-    input.type = "text";
-    input.className = "cell-input";
-    input.value = gradeCell.textContent.trim();
-    input.placeholder = "e.g. 85%";
-
-    gradeCell.textContent = "";
-    gradeCell.appendChild(input);
-  });
-
-  isEditingCompletedGrades = true;
-  if (editGradesBtn) {
-    editGradesBtn.textContent = "Save Grades";
-  }
-}
-
-function exitCompletedGradesEditMode() {
-  if (!completedContent) {
-    return;
-  }
-
-  const rows = completedContent.querySelectorAll(":scope > .assignment-row");
-  rows.forEach((row) => {
-    const gradeCell = row.children[3];
-    const gradeInput = gradeCell?.querySelector("input");
-    if (!gradeInput) {
-      return;
-    }
-
-    gradeCell.textContent = normalizeGradeText(gradeInput.value);
-  });
-
-  isEditingCompletedGrades = false;
-  if (editGradesBtn) {
-    editGradesBtn.textContent = "Edit Grades";
-  }
-}
-
-function toggleCompletedGradesEditMode() {
-  if (isEditingCompletedGrades) {
-    exitCompletedGradesEditMode();
-    return;
-  }
-
-  enterCompletedGradesEditMode();
 }
 
 function clearGradeError(gradeInput) {
@@ -147,7 +166,7 @@ function moveRowToCompleted(row) {
     createCell(weight),
     createCell(dueDate),
     createCell(normalizeGradeText(grade)),
-    createCell(status)
+    createCompletedStatusCell(status)
   );
 
   completedContent.appendChild(row);
@@ -196,20 +215,30 @@ function handleInProgressInput(event) {
   }
 }
 
-function setActiveTab(showCompleted) {
-  if (!inProgressBtn || !completedBtn || !inProgressContent || !completedContent) {
+function handleCompletedContentClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
     return;
   }
 
-  if (!showCompleted && isEditingCompletedGrades) {
-    exitCompletedGradesEditMode();
+  const actionEl = target.closest("[data-action='undo-submitted']");
+  if (!actionEl) {
+    return;
+  }
+
+  const row = actionEl.closest(".assignment-row");
+  moveRowToInProgress(row);
+}
+
+function setActiveTab(showCompleted) {
+  if (!inProgressBtn || !completedBtn || !inProgressContent || !completedContent) {
+    return;
   }
 
   inProgressContent.style.display = showCompleted ? "none" : "block";
   completedContent.style.display = showCompleted ? "block" : "none";
   inProgressBtn.classList.toggle("active", !showCompleted);
   completedBtn.classList.toggle("active", showCompleted);
-  setEditGradesButtonVisibility(showCompleted);
 }
 
 if (inProgressBtn && completedBtn) {
@@ -222,12 +251,13 @@ if (inProgressContent) {
   inProgressContent.addEventListener("input", handleInProgressInput);
 }
 
+if (completedContent) {
+  completedContent.addEventListener("click", handleCompletedContentClick);
+}
+
 if (sortDueDateBtn) {
   sortDueDateBtn.addEventListener("click", sortStudentAssignmentsByDueDate);
 }
 
-if (editGradesBtn) {
-  editGradesBtn.addEventListener("click", toggleCompletedGradesEditMode);
-}
-
+decorateCompletedRows();
 setActiveTab(false);
