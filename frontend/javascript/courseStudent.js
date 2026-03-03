@@ -84,11 +84,7 @@ function moveRowToInProgress(row) {
   const grade = row.children[3]?.textContent?.trim() ?? "";
 
   row.innerHTML = "";
-  row.append(
-    createCell(name),
-    createCell(weight),
-    createCell(dueDate)
-  );
+  row.append(createCell(name), createCell(weight), createCell(dueDate));
 
   const gradeInput = document.createElement("input");
   gradeInput.type = "text";
@@ -166,7 +162,7 @@ function moveRowToCompleted(row) {
     createCell(weight),
     createCell(dueDate),
     createCell(normalizeGradeText(grade)),
-    createCompletedStatusCell(status)
+    createCompletedStatusCell(status),
   );
 
   completedContent.appendChild(row);
@@ -191,7 +187,7 @@ function handleStatusChange(event) {
 
     if (gradeInput instanceof HTMLInputElement) {
       gradeInput.setCustomValidity(
-        "Please enter a grade before marking this assessment as Submitted."
+        "Please enter a grade before marking this assessment as Submitted.",
       );
       gradeInput.reportValidity();
       gradeInput.focus();
@@ -218,45 +214,6 @@ function handleInProgressInput(event) {
 function handleCompletedContentClick(event) {
   const target = event.target;
   if (!(target instanceof HTMLElement)) {
-function handleInProgressBlur(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-
-  if (target.matches('input[type="text"]')) {
-    strictCoursePercent(target);
-  }
-}
-
-function getGradeInput(targetOrEvent) {
-  if (targetOrEvent instanceof HTMLInputElement) {
-    return targetOrEvent;
-  }
-
-  if (
-    targetOrEvent &&
-    targetOrEvent.target &&
-    targetOrEvent.target instanceof HTMLInputElement
-  ) {
-    return targetOrEvent.target;
-  }
-
-  return null;
-}
-
-function removePercentSymbol(value) {
-  const trimmedValue = value.trim();
-
-  if (trimmedValue.endsWith("%")) {
-    return trimmedValue.slice(0, -1).trim();
-  }
-
-  return trimmedValue;
-}
-
-function setActiveTab(showCompleted) {
-  if (!inProgressBtn || !completedBtn || !inProgressContent || !completedContent) {
     return;
   }
 
