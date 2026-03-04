@@ -60,8 +60,23 @@ if (createCourseForm && coursesList) {
       .toUpperCase();
     const term = document.getElementById("term")?.value.trim();
     const professor = document.getElementById("professor")?.value.trim();
+    const credits = document.getElementById("course-credits")?.value.trim();
 
-    if (!courseName || !courseCode || !section || !term || !professor) {
+    //reject if credits are not nums
+    if (credits && !/^\d+$/.test(credits)) {
+      alert("Credits must be a number.");
+      document.getElementById("course-credits").value = "";
+      return;
+    }
+
+    if (
+      !courseName ||
+      !courseCode ||
+      !section ||
+      !term ||
+      !professor ||
+      !credits
+    ) {
       return;
     }
 
@@ -72,6 +87,7 @@ if (createCourseForm && coursesList) {
       <p><span class="course-label">Prof:</span> ${professor}</p>
       <p><span class="course-label">Section:</span> ${section}</p>
       <p><span class="course-label">Term:</span> ${term}</p>
+      <p><span class="course-label">Credits:</span> ${credits}</p>
     `;
 
     addCourseCardClickHandler(newCard);

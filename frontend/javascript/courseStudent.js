@@ -15,7 +15,9 @@ function sortRowsByDueDate(container) {
     return;
   }
 
-  const rows = Array.from(container.querySelectorAll(":scope > .assignment-row"));
+  const rows = Array.from(
+    container.querySelectorAll(":scope > .assignment-row"),
+  );
   rows.sort((a, b) => {
     const aDate = parseDueDateValue(a.children[2]?.textContent ?? "");
     const bDate = parseDueDateValue(b.children[2]?.textContent ?? "");
@@ -39,11 +41,6 @@ function createCell(text) {
 function createStatusSelect(selectedValue = "") {
   const select = document.createElement("select");
   select.className = "cell-input";
-
-  const placeholderOption = document.createElement("option");
-  placeholderOption.value = "";
-  placeholderOption.textContent = "Incomplete";
-  select.appendChild(placeholderOption);
 
   STATUS_OPTIONS.forEach((status) => {
     const option = document.createElement("option");
@@ -227,7 +224,12 @@ function handleCompletedContentClick(event) {
 }
 
 function setActiveTab(showCompleted) {
-  if (!inProgressBtn || !completedBtn || !inProgressContent || !completedContent) {
+  if (
+    !inProgressBtn ||
+    !completedBtn ||
+    !inProgressContent ||
+    !completedContent
+  ) {
     return;
   }
 
