@@ -52,8 +52,12 @@ if (signUpForm) {
         studentId: studentIdInput?.value || null,
       });
 
-      alert("Account created successfully. Please log in.");
-      window.location.href = "login.html";
+      alert("Account created successfully.");
+      if (isInstructorRadio?.checked) {
+        window.location.href = "../adminPages/dashboardAdmin.html";
+      } else if (isStudentRadio?.checked) {
+        window.location.href = "../studentPages/dashboardStudent.html";
+      }
     } catch (error) {
       alert(error.message);
     }
