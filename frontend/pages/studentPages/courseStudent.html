@@ -1,112 +1,111 @@
-<!DOCTYPE html> 
+<!doctype html>
 <html>
-<head>
+  <head>
     <title>Smart Course Companion | Student Course</title>
-    <link rel="stylesheet" href="../../css/pages/header.css">
-    <link rel="stylesheet" href="../../css/pages/courseStudent.css">
+    <link rel="stylesheet" href="../../css/pages/header.css" />
+    <link rel="stylesheet" href="../../css/pages/courseStudent.css" />
     <script src="../../javascript/headerStudent.js" defer></script>
     <script src="../../javascript/courseStudent.js" defer></script>
-</head>
+  </head>
 
-<body>
-    <div id="site-header" data-header-title="Course" data-active-menu="course"></div>
+  <body>
+    <div
+      id="site-header"
+      data-header-title="Course"
+      data-active-menu="course"
+    ></div>
     <div class="container">
+      <div class="page-header">
+        <h1 id="course-title">SOEN 287</h1>
+        <button id="sortDueDateBtn" class="sort-due-btn">
+          Sort by Due Date
+        </button>
+      </div>
 
-        <div class = "page-header">
-            <h1 id="course-title">SOEN 287</h1>
-            <button id = "sortDueDateBtn" class="sort-due-btn">Sort by Due Date</button>
-        </div>
+      <div class="button-row">
+        <button id="inProgressBtn" class="tab">In progress</button>
+        <button id="completedBtn" class="tab">Completed</button>
+      </div>
 
-        <div class="button-row">
-            <button id="inProgressBtn" class="tab">In progress</button>
-            <button id="completedBtn" class="tab">Completed</button>
+      <div class="categories-box">
+        <div class="categories">
+          <h2>Name</h2>
+          <h2>Weight</h2>
+          <h2>Due Date</h2>
+          <h2>Grade</h2>
+          <h2>Status</h2>
         </div>
+      </div>
 
-        <div class="categories-box">
-            <div class = "categories">
-                <h2>Name</h2>
-                <h2>Weight</h2>
-                <h2>Due Date</h2>
-                <h2>Grade</h2>
-                <h2>Status</h2>
-            </div>
+      <div id="inProgressContent" class="tab-content">
+        <div class="assignment-row">
+          <div>Quiz 2</div>
+          <div>1%</div>
+          <div>2026-03-01</div>
+          <input type="text" placeholder="e.g. 85%" class="cell-input" />
+          <select class="cell-input">
+            <option>Not started</option>
+            <option>In progress</option>
+            <option>Submitted</option>
+          </select>
         </div>
-
-        <div id="inProgressContent" class="tab-content">
-            <div class="assignment-row">
-                <div>Quiz 2</div>
-                <div>1%</div>
-                <div>2026-03-01</div>
-                <input type="text" placeholder="e.g. 85%" class="cell-input">
-                <select class="cell-input">
-                    <option value="">Incomplete</option>
-                    <option>Not started</option>
-                    <option>In progress</option>
-                    <option>Submitted</option>
-                </select>
-            </div>
-            <div class="assignment-row">
-                <div>Quiz 3</div>
-                <div>1%</div>
-                <div>2026-03-09</div>
-                <input type="text" placeholder="e.g. 85%" class="cell-input">
-                <select class="cell-input">
-                    <option value="">Incomplete</option>
-                    <option>Not started</option>
-                    <option>In progress</option>
-                    <option>Submitted</option>
-                </select>
-            </div>
-            <div class="assignment-row">
-                <div>Lab 2</div>
-                <div>2%</div>
-                <div>2026-03-08</div>
-                <input type="text" placeholder="e.g. 85%" class="cell-input">
-                <select class="cell-input">
-                    <option value="">Incomplete</option>
-                    <option>Not started</option>
-                    <option>In progress</option>
-                    <option>Submitted</option>
-                </select>
-            </div>
-            <div class="assignment-row">
-                <div>Assignment 2</div>
-                <div>5%</div>
-                <div>2026-03-09</div>
-                <input type="text" placeholder="e.g. 85%" class="cell-input">
-                <select class="cell-input">
-                    <option value="">Incomplete</option>
-                    <option>Not started</option>
-                    <option>In progress</option>
-                    <option>Submitted</option>
-                </select>
-            </div>
+        <div class="assignment-row">
+          <div>Quiz 3</div>
+          <div>1%</div>
+          <div>2026-03-09</div>
+          <input type="text" placeholder="e.g. 85%" class="cell-input" />
+          <select class="cell-input">
+            <option>Not started</option>
+            <option>In progress</option>
+            <option>Submitted</option>
+          </select>
         </div>
-        <div id="completedContent" class="tab-content">
-            <div class="assignment-row">
-                <div>Assignment 1</div>
-                <div>20%</div>
-                <div>2026-02-21</div>
-                <div>85%</div>
-                <div>Submitted</div>
-            </div>
-            <div class="assignment-row">
-                <div>Quiz 1</div>
-                <div>1%</div>
-                <div>2026-02-27</div>
-                <div>90%</div>
-                <div>Submitted</div>
-            </div>
-            <div class="assignment-row">
-                <div>Lab 1</div>
-                <div>2%</div>
-                <div>2026-02-23</div>
-                <div>80%</div>
-                <div>Submitted</div>
-            </div>
+        <div class="assignment-row">
+          <div>Lab 2</div>
+          <div>2%</div>
+          <div>2026-03-08</div>
+          <input type="text" placeholder="e.g. 85%" class="cell-input" />
+          <select class="cell-input">
+            <option>Not started</option>
+            <option>In progress</option>
+            <option>Submitted</option>
+          </select>
         </div>
-
+        <div class="assignment-row">
+          <div>Assignment 2</div>
+          <div>5%</div>
+          <div>2026-03-09</div>
+          <input type="text" placeholder="e.g. 85%" class="cell-input" />
+          <select class="cell-input">
+            <option>Not started</option>
+            <option>In progress</option>
+            <option>Submitted</option>
+          </select>
+        </div>
+      </div>
+      <div id="completedContent" class="tab-content">
+        <div class="assignment-row">
+          <div>Assignment 1</div>
+          <div>20%</div>
+          <div>2026-02-21</div>
+          <div>85%</div>
+          <div>Submitted</div>
+        </div>
+        <div class="assignment-row">
+          <div>Quiz 1</div>
+          <div>1%</div>
+          <div>2026-02-27</div>
+          <div>90%</div>
+          <div>Submitted</div>
+        </div>
+        <div class="assignment-row">
+          <div>Lab 1</div>
+          <div>2%</div>
+          <div>2026-02-23</div>
+          <div>80%</div>
+          <div>Submitted</div>
+        </div>
+      </div>
     </div>
-
-</body>
+  </body>
 </html>
