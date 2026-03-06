@@ -70,6 +70,21 @@ function createCompletedStatusCell(statusText = "Submitted") {
   return statusCell;
 }
 
+function handleCompletedContentClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const actionEl = target.closest("[data-action='undo-submitted']");
+  if (!actionEl) {
+    return;
+  }
+
+  const row = actionEl.closest(".assignment-row");
+  moveRowToInProgress(row);
+}
+
 function moveRowToInProgress(row) {
   if (!row || !inProgressContent) {
     return;
@@ -139,6 +154,65 @@ function clearGradeError(gradeInput) {
   }
 }
 
+function getGradeInput(targetOrEvent) {
+  if (targetOrEvent instanceof HTMLInputElement) {
+    return targetOrEvent;
+  }
+
+  if (
+    targetOrEvent &&
+    targetOrEvent.target &&
+    targetOrEvent.target instanceof HTMLInputElement
+  ) {
+    return targetOrEvent.target;
+  }
+
+  return null;
+}
+
+function removePercentSymbol(value) {
+  const trimmedValue = value.trim();
+  if (trimmedValue.endsWith("%")) {
+    return trimmedValue.slice(0, -1).trim();
+  }
+
+  return trimmedValue;
+}
+
+function strictCoursePercent(targetOrEvent) {
+  const gradeInput = getGradeInput(targetOrEvent);
+  if (!gradeInput) {
+    return false;
+  }
+
+  const rawValue = gradeInput.value.trim();
+  if (!rawValue) {
+    gradeInput.setCustomValidity("Please enter a grade between 0 and 100.");
+    return false;
+  }
+
+  const cleanedValue = removePercentSymbol(rawValue);
+  const numericPattern = /^\d+(\.\d+)?$/;
+  if (!numericPattern.test(cleanedValue)) {
+    gradeInput.setCustomValidity(
+      "Please enter a valid number between 0 and 100.",
+    );
+    return false;
+  }
+
+  const numericValue = Number(cleanedValue);
+  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
+    gradeInput.setCustomValidity(
+      "Please enter a valid number between 0 and 100.",
+    );
+    return false;
+  }
+
+  gradeInput.setCustomValidity("");
+  gradeInput.value = `${numericValue}%`;
+  return true;
+}
+
 function moveRowToCompleted(row) {
   if (!row || !completedContent) {
     return;
@@ -180,7 +254,7 @@ function handleStatusChange(event) {
   const gradeValue = gradeInput?.value?.trim() ?? "";
 
   if (!gradeValue) {
-    target.value = "";
+    target.value = "Not started";
 
     if (gradeInput instanceof HTMLInputElement) {
       gradeInput.setCustomValidity(
@@ -189,7 +263,15 @@ function handleStatusChange(event) {
       gradeInput.reportValidity();
       gradeInput.focus();
     }
+    return;
+  }
 
+  if (!strictCoursePercent(gradeInput)) {
+    target.value = "Not started";
+    if (gradeInput instanceof HTMLInputElement) {
+      gradeInput.reportValidity();
+      gradeInput.focus();
+    }
     return;
   }
 
@@ -208,19 +290,15 @@ function handleInProgressInput(event) {
   }
 }
 
-function handleCompletedContentClick(event) {
+function handleInProgressBlur(event) {
   const target = event.target;
-  if (!(target instanceof HTMLElement)) {
+  if (!(target instanceof HTMLInputElement)) {
     return;
   }
 
-  const actionEl = target.closest("[data-action='undo-submitted']");
-  if (!actionEl) {
-    return;
+  if (target.matches('input[type="text"]')) {
+    strictCoursePercent(target);
   }
-
-  const row = actionEl.closest(".assignment-row");
-  moveRowToInProgress(row);
 }
 
 function setActiveTab(showCompleted) {
@@ -247,6 +325,7 @@ if (inProgressBtn && completedBtn) {
 if (inProgressContent) {
   inProgressContent.addEventListener("change", handleStatusChange);
   inProgressContent.addEventListener("input", handleInProgressInput);
+  inProgressContent.addEventListener("focusout", handleInProgressBlur);
 }
 
 if (completedContent) {
