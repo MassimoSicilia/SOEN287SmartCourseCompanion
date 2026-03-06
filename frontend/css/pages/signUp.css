@@ -14,7 +14,8 @@ body {
   padding: 1.25rem;
   font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background-color: #040b51;
   background-image:
     radial-gradient(
@@ -28,6 +29,14 @@ body {
       rgba(4, 11, 81, 0) 40%
     ),
     linear-gradient(145deg, #040b51 0%, #071160 50%, #040b51 100%);
+}
+
+@media (max-height: 760px) {
+  body {
+    align-items: flex-start;
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+  }
 }
 
 .signUpContainer {
