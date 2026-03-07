@@ -117,6 +117,66 @@ body {
   margin: 0;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
   cursor: pointer;
+  position: relative;
+}
+
+.course-actions-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d7e2f5;
+  border-radius: 6px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.course-actions-btn span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #334155;
+}
+
+.course-actions-menu {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  display: none;
+  min-width: 130px;
+  background: #ffffff;
+  border: 1px solid #d7e2f5;
+  border-radius: 8px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  z-index: 5;
+}
+
+.course-actions-menu.is-open {
+  display: block;
+}
+
+.course-delete-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #b91c1c;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.course-delete-btn:hover {
+  background: #fef2f2;
 }
 
 .course-card h3 {
