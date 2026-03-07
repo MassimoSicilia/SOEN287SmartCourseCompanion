@@ -5,11 +5,42 @@ const courseCards = document.querySelectorAll(".course-card");
 
 if (courseCards) {
   courseCards.forEach((card) => {
+    const actionsButton = card.querySelector(".course-actions-btn");
+    const actionsMenu = card.querySelector(".course-actions-menu");
+    const deleteButton = card.querySelector(".course-delete-btn");
+
+    if (actionsButton && actionsMenu) {
+      actionsButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+
+        document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
+          if (menu !== actionsMenu) {
+            menu.classList.remove("is-open");
+          }
+        });
+
+        actionsMenu.classList.toggle("is-open");
+      });
+    }
+
+    if (deleteButton) {
+      deleteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        card.remove();
+      });
+    }
+
     card.addEventListener("click", () => {
       window.location.href = "courseStudent.html";
     });
   });
 }
+
+document.addEventListener("click", () => {
+  document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
+    menu.classList.remove("is-open");
+  });
+});
 
 if (addCourseButton) {
   addCourseButton.onclick = function () {

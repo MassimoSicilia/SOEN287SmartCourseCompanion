@@ -1,5 +1,7 @@
 <h1>📘 Smart Course Companion</h1>
 
+<p><strong>Setup:</strong> See <code>INSTALLATION.md</code> for local installation and run instructions.</p>
+
 A web-based academic planning tool designed to help university students organize courses, track assessments, calculate grades, and visualize academic progress—all in one place.
 
 This project is developed as part of SOEN 287 – Web Programming at Concordia University (Winter 2026).
