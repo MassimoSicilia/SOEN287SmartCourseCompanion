@@ -17,9 +17,7 @@ cd SOEN287SmartCourseCompanion
 
 ## 3. Run the Project Locally
 
-Choose one method below.
-
-### Option A: VS Code + Live Server (recommended)
+VS Code + Live Server (recommended)
 
 1. Open the project folder in VS Code.
 2. Install the `Live Server` extension (if not already installed).
@@ -27,19 +25,6 @@ Choose one method below.
    - `frontend/pages/studentPages/login.html` (student flow)
    - `frontend/pages/adminPages/dashboardAdmin.html` (admin flow)
 4. Right-click the file and select `Open with Live Server`.
-
-### Option B: Python local server
-
-From the project root:
-
-```bash
-python3 -m http.server 5500
-```
-
-Then open:
-
-- `http://localhost:5500/frontend/pages/studentPages/login.html`
-- or `http://localhost:5500/frontend/pages/adminPages/dashboardAdmin.html`
 
 ## 4. Basic Usage Notes
 
