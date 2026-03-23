@@ -1,0 +1,152 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
+:root {
+    --primary-blue: #040b51;
+    --primary-blue-600: #1d4ed8;
+    --bg-main: #eef3ff;
+    --bg-surface: #ffffff;
+    --border-soft: #d9e2f2;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --panel-tint: #e9f2ff;
+    --panel-tint-border: #d5e5ff;
+}
+
+body {
+    font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg-main);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    text-align: left;
+    padding: 40px 40px 12px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border-soft);
+}
+
+h1 {
+    margin-bottom: 0;
+}
+
+.course-grades {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+    align-items: stretch;
+    padding: 0 40px 40px;
+}
+
+@media (max-width: 1100px) {
+    .course-grades {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .course-grades {
+        grid-template-columns: 1fr;
+    }
+}
+
+.course-row-box {
+    --grade-col: 72px;
+    --weight-col: 72px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.course-box-header {
+    background: var(--panel-tint);
+    border-bottom: 1px solid var(--panel-tint-border);
+    padding: 14px 18px;
+}
+
+.course-box-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--primary-blue);
+    font-family: "Outfit", "Manrope", sans-serif;
+}
+
+.course-box-columns {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 3px solid var(--primary-blue);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--grade-col) var(--weight-col);
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.course-box-columns span {
+    white-space: nowrap;
+}
+
+.course-box-columns span:nth-child(1) { text-align: left; }
+.course-box-columns span:nth-child(2),
+.course-box-columns span:nth-child(3) { text-align: right; }
+
+.category-list {
+    list-style: none;
+    margin: 0;
+    padding: 10px 18px 14px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.category-list li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--grade-col) var(--weight-col);
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-soft);
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+.col-assessment,
+.col-assessment-name { text-align: left; }
+
+.col-grade,
+.col-weight,
+.col-grade-value,
+.col-weight-value,
+.weight-value {
+    text-align: right;
+    min-width: 56px;
+    white-space: nowrap;
+}
+
+.course-average-value,
+.course-total-weight-value {
+    text-align: right;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+.empty-assessment-row span {
+    visibility: hidden;
+}
+
+.category-list li:last-child {
+    border-bottom: none;
+    margin-top: auto;
+    border-top: 3px solid var(--primary-blue);
+}
+
+.category-list li:nth-last-child(2) {
+    border-bottom: none;
+}

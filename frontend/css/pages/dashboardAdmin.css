@@ -1,0 +1,294 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap");
+
+:root {
+  --header-height: 72px;
+  --primary-blue: #040b51;
+  --primary-blue-600: #1d4ed8;
+  --bg-main: #eef3ff;
+  --bg-surface: #ffffff;
+  --border-soft: #d9e2f2;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --success-bg: #dcfce7;
+  --success-text: #166534;
+  --info-bg: #dbeafe;
+  --info-text: #1d4ed8;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: "Manrope", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-main);
+  color: var(--text-main);
+}
+
+.courses-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.courses-title {
+  padding-left: 1%;
+  padding-right: 1%;
+}
+
+.courses-title h2 {
+  font-family: "Outfit", "Manrope", sans-serif;
+  font-weight: 700;
+  margin: -20px 0 0;
+}
+
+.courses-div {
+  width: min(1100px, 92%);
+  margin: 24px auto 30px;
+  min-height: 320px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  padding: 8px 0 12px;
+  position: relative;
+}
+
+.courses-div::before {
+  content: "";
+  position: absolute;
+  top: -14px;
+  left: 2%;
+  right: 2%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #c8d6f2, transparent);
+}
+
+.create-courses-button {
+  padding: 8px 14px;
+  border: 1px solid #bcd0f3;
+  border-radius: 6px;
+  background: #f8fbff;
+  color: var(--primary-blue);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 10%;
+}
+
+.create-courses-button:hover {
+  transform: translateY(-1px);
+  background: #eef4ff;
+  border-color: #9db7eb;
+}
+
+.create-courses-button:active {
+  background-color: #e7efff;
+  border-color: #86a6e6;
+  box-shadow: rgba(29, 78, 216, 0.15) 0 2px 4px;
+  color: #173f9e;
+  transform: translateY(0);
+}
+
+.courses-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.course-card {
+  background-color: var(--bg-surface);
+  border-color: var(--border-soft);
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 12px;
+  box-sizing: border-box;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  flex: 0 0 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+  cursor: pointer;
+  position: relative;
+}
+
+.course-actions-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #d7e2f5;
+  border-radius: 6px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.course-actions-btn span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #334155;
+}
+
+.course-actions-menu {
+  position: absolute;
+  top: 40px;
+  right: 10px;
+  display: none;
+  min-width: 130px;
+  background: #ffffff;
+  border: 1px solid #d7e2f5;
+  border-radius: 8px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.12);
+  z-index: 5;
+}
+
+.course-actions-menu.is-open {
+  display: block;
+}
+
+.course-delete-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #b91c1c;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 10px;
+  cursor: pointer;
+}
+
+.course-delete-btn:hover {
+  background: #fef2f2;
+}
+
+.course-card h3 {
+  margin: 0;
+  font-size: 15px;
+  font-family: "Outfit", "Manrope", sans-serif;
+  font-weight: 600;
+}
+
+.course-card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.course-label {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* modal styling */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 15, 40, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal.is-open {
+  display: flex;
+}
+
+.modal-content {
+  width: min(500px, 100%);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  box-shadow: 0 16px 42px rgba(15, 23, 42, 0.24);
+  padding: 1.25rem 1.25rem 1rem;
+  position: relative;
+}
+
+.modal-content h2 {
+  margin: 0 0 1rem;
+  font-family: "Outfit", "Manrope", sans-serif;
+  font-size: 1.3rem;
+  color: var(--text-main);
+}
+
+.close {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.9rem;
+  color: var(--text-muted);
+  font-size: 1.65rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--primary-blue);
+}
+
+#create-course-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.7rem;
+}
+
+#create-course-form label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+#create-course-form input {
+  border: 1px solid #c9d7ee;
+  border-radius: 10px;
+  padding: 0.62rem 0.75rem;
+  font: inherit;
+  color: var(--text-main);
+  background: #fbfdff;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#create-course-form input:focus {
+  outline: none;
+  border-color: #86a6e6;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.13);
+}
+
+#create-course-form button[type="submit"] {
+  margin-top: 0.4rem;
+  border: 1px solid #86a6e6;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2f6ef6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.92rem;
+  padding: 0.62rem 0.85rem;
+  cursor: pointer;
+}
+
+#create-course-form button[type="submit"]:hover {
+  filter: brightness(1.04);
+}

@@ -1,0 +1,11 @@
+{
+  "liveServer.settings.ignoreFiles": [
+    "**/.git/**",
+    "**/node_modules/**",
+    "**/.DS_Store",
+    "**/.vscode/**",
+    "**/*.partial"
+  ],
+  "liveServer.settings.wait": 1200,
+  "liveServer.settings.donotVerifyTags": true
+}
