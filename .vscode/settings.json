@@ -1,11 +1,27 @@
 {
   "liveServer.settings.ignoreFiles": [
+    ".DS_Store",
     "**/.git/**",
     "**/node_modules/**",
+    "**/.history/**",
+    "**/.cache/**",
     "**/.DS_Store",
+    "**/._*",
     "**/.vscode/**",
-    "**/*.partial"
+    "**/*.partial",
+    "**/*.tmp",
+    "**/*.temp",
+    "**/*.swp",
+    "**/*.swo"
   ],
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.git/index.lock": true,
+    "**/.DS_Store": true,
+    "**/._*": true
+  },
   "liveServer.settings.wait": 1200,
-  "liveServer.settings.donotVerifyTags": true
+  "liveServer.settings.donotVerifyTags": true,
+  "liveServer.settings.fullReload": false
 }
