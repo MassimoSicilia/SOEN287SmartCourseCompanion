@@ -28,10 +28,26 @@ function initializeHeaderBehavior(container) {
     };
   }
 
+  const disabledCoursesMenuItem = document.getElementById(
+    "disabled-courses-menu-item",
+  );
+  if (disabledCoursesMenuItem) {
+    disabledCoursesMenuItem.onclick = function () {
+      window.location.href = "disabledCoursesAdmin.html";
+    };
+  }
+
   const specificCourseMenuItem = document.getElementById("specific-course-menu-item");
   if (specificCourseMenuItem) {
     specificCourseMenuItem.onclick = function () {
       window.location.href = "courseAdmin.html";
+    };
+  }
+
+  const analyticsMenuItem = document.getElementById("analytics-menu-item");
+  if (analyticsMenuItem) {
+    analyticsMenuItem.onclick = function () {
+      window.location.href = "analyticsAdmin.html";
     };
   }
 
@@ -51,7 +67,9 @@ function initializeHeaderBehavior(container) {
   const activeMenu = container.dataset.activeMenu;
   const activeByKey = {
     dashboard: dashboardMenuItem,
-    course: specificCourseMenuItem
+    disabledCourses: disabledCoursesMenuItem,
+    course: specificCourseMenuItem,
+    analytics: analyticsMenuItem
   };
   const activeElement = activeMenu ? activeByKey[activeMenu] : null;
   if (activeElement) {
