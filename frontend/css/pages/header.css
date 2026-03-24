@@ -124,6 +124,7 @@
 }
 
 #dashboard-menu-item:hover,
+#disabled-courses-menu-item:hover,
 #specific-course-menu-item:hover,
 #grades-menu-item:hover,
 #analytics-menu-item:hover {
@@ -144,6 +145,7 @@
 }
 
 #dashboard-menu-item:focus-visible,
+#disabled-courses-menu-item:focus-visible,
 #specific-course-menu-item:focus-visible,
 #grades-menu-item:focus-visible,
 #analytics-menu-item:focus-visible {
