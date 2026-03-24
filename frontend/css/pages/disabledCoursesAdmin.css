@@ -311,3 +311,25 @@ body {
 #create-course-form button[type="submit"]:hover {
   filter: brightness(1.04);
 }
+
+.disabled-courses-page .courses-header {
+  padding: 18px 12px 6px;
+}
+
+.disabled-courses-page .courses-title h2 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.disabled-courses-page .course-card h3 {
+  margin: 0 0 2px;
+  line-height: 1.35;
+}
+
+.disabled-courses-page .header-title h1 {
+  white-space: nowrap;
+}
+
+.disabled-courses-page .course-card {
+  cursor: default;
+}
