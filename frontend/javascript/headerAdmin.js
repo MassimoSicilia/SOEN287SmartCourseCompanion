@@ -44,6 +44,13 @@ function initializeHeaderBehavior(container) {
     };
   }
 
+  const analyticsMenuItem = document.getElementById("analytics-menu-item");
+  if (analyticsMenuItem) {
+    analyticsMenuItem.onclick = function () {
+      window.location.href = "analyticsAdmin.html";
+    };
+  }
+
   const signOutMenuItem = document.getElementById("sign-out-menu-item");
   if (signOutMenuItem) {
     signOutMenuItem.onclick = function () {
@@ -61,7 +68,8 @@ function initializeHeaderBehavior(container) {
   const activeByKey = {
     dashboard: dashboardMenuItem,
     disabledCourses: disabledCoursesMenuItem,
-    course: specificCourseMenuItem
+    course: specificCourseMenuItem,
+    analytics: analyticsMenuItem
   };
   const activeElement = activeMenu ? activeByKey[activeMenu] : null;
   if (activeElement) {
