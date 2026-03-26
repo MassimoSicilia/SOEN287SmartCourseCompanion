@@ -4,13 +4,14 @@ const AccountStatus = Object.freeze({
   STUDENT: "student",
 });
 
+//removed password param so not the Account object represents rows in the DB
 class Account {
-  constructor({ username, email, password, status, studentId = null }) {
+  constructor({ username, email, status, studentId = null, db_ID = null }) {
     this.username = username?.trim() || "";
     this.email = email?.trim() || "";
-    this.password = password || "";
     this.status = status;
     this.studentId = studentId?.trim() || null;
+    this.db_ID = db_ID;
 
     this.validate();
   }
@@ -22,10 +23,6 @@ class Account {
 
     if (!this.email) {
       throw new Error("Email is required.");
-    }
-
-    if (!this.password) {
-      throw new Error("Password is required.");
     }
 
     const validStatuses = Object.values(AccountStatus);
