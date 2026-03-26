@@ -3,6 +3,7 @@ const isStudentRadio = document.getElementById("isStudent");
 const isInstructorRadio = document.getElementById("isInstructor");
 const idDiv = document.getElementById("IdDiv");
 const studentIdInput = document.getElementById("studentID");
+const supabaseClient = window.supabaseClient;
 
 //helper method to show/hide student ID field based on selected account type
 function toggleStudentIdVisibility() {
@@ -28,31 +29,60 @@ if (isInstructorRadio) {
 }
 
 if (signUpForm) {
-  signUpForm.addEventListener("submit", (event) => {
+  signUpForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const passwordInput = document.getElementById("password");
-    const confirmPasswordInput = document.getElementById("passwordWord2");
+    if (!supabaseClient) {
+      alert(
+        "Supabase client is not loaded. Check signUp.html script order and frontend/javascript/supabaseClient.js.",
+      );
+      return;
+    }
 
-    if (passwordInput.value !== confirmPasswordInput.value) {
+    const password = document.getElementById("password").value.trim();
+    const confirmPasswordInput = document.getElementById("passwordWord2");
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const studentID = studentIdInput?.value.trim() || null;
+    const role = isStudentRadio?.checked
+      ? AccountStatus.STUDENT
+      : AccountStatus.ADMIN;
+
+    if (password !== confirmPasswordInput.value) {
       alert("Passwords do not match.");
       return;
     }
 
-    const selectedStatus = isStudentRadio?.checked
-      ? AccountStatus.STUDENT
-      : AccountStatus.ADMIN;
-
     try {
-      accountStore.addAccount({
-        username: document.getElementById("username").value,
-        email: document.getElementById("email").value,
-        password: passwordInput.value,
-        status: selectedStatus,
-        studentId: studentIdInput?.value || null,
+      // accountStore.addAccount({
+      //   username: document.getElementById("username").value,
+      //   email: document.getElementById("email").value,
+      //   password: passwordInput.value,
+      //   status: selectedStatus,
+      //   studentId: studentIdInput?.value || null,
+      // });
+
+      //supabase logic
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            username,
+            role,
+            student_id: role === AccountStatus.STUDENT ? studentID : null,
+          },
+        },
       });
 
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      console.log("Supabase account created:", data?.user);
       alert("Account created successfully.");
+
       if (isInstructorRadio?.checked) {
         window.location.href = "../adminPages/dashboardAdmin.html";
       } else if (isStudentRadio?.checked) {
