@@ -1,0 +1,15 @@
+{
+  "name": "smart-course-companion-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Node workspace for backend/server-side assignment steps.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.3.1",
+    "postgres": "^3.4.8"
+  }
+}
