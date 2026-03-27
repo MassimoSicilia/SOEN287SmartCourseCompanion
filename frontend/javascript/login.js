@@ -1,27 +1,46 @@
 const loginForm = document.getElementById("loginForm");
+const supabaseClient = window.supabaseClient;
 
 if (loginForm) {
-  loginForm.addEventListener("submit", (event) => {
+  loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const username = document.getElementById("username").value;
-    const password = document.getElementById("password").value;
-
-    const account = accountStore.authenticate(username, password);
-    if (!account) {
-      alert("Invalid username or password.");
+    if (!supabaseClient) {
+      alert("Supabase client is not loaded.");
       return;
     }
 
-    const isAdmin =
-      account?.status === AccountStatus?.ADMIN ||
-      account?.status?.toLowerCase?.() === "admin";
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
 
-    if (isAdmin) {
-      window.location.href = "../adminPages/dashboardAdmin.html";
-      return;
+    try {
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      const user = data.user;
+      const metadata = user.user_metadata;
+
+      console.log("Logged in:", user);
+      console.log("Role:", metadata.role);
+      console.log("Username:", metadata.username);
+
+      // Mirror your sign-up redirect logic using the stored role
+      if (metadata.role === AccountStatus.ADMIN) {
+        window.location.href = "../adminPages/dashboardAdmin.html";
+      } else if (metadata.role === AccountStatus.STUDENT) {
+        window.location.href = "../studentPages/dashboardStudent.html";
+      } else {
+        alert("Unknown role. Contact support.");
+      }
+    } catch (err) {
+      alert(err.message);
     }
-
-    window.location.href = "dashboardStudent.html";
   });
 }
