@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart Course Companion Login</title>
     <link rel="stylesheet" href="../../css/pages/login.css" />
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      defer
+    ></script>
+    <script src="../../javascript/supabaseClient.js" defer></script>
     <script src="../../javascript/login.js" defer></script>
     <script src="../../javascript/account.js" defer></script>
     <script src="../../javascript/AccountStore.js" defer></script>
@@ -14,8 +19,8 @@
       <h2>Login to Smart Course Companion</h2>
       <form id="loginForm">
         <div>
-          <label for="username">Username:</label><br />
-          <input type="text" id="username" name="username" required /><br />
+          <label for="email">Email:</label><br />
+          <input type="email" id="email" name="email" required /><br />
         </div>
         <div>
           <label for="password">Password:</label><br />
