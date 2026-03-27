@@ -54,14 +54,6 @@ if (signUpForm) {
     }
 
     try {
-      // accountStore.addAccount({
-      //   username: document.getElementById("username").value,
-      //   email: document.getElementById("email").value,
-      //   password: passwordInput.value,
-      //   status: selectedStatus,
-      //   studentId: studentIdInput?.value || null,
-      // });
-
       //supabase logic
       const { data, error } = await supabaseClient.auth.signUp({
         email,
