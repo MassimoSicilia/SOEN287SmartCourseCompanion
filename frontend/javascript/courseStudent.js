@@ -4,6 +4,28 @@ const inProgressContent = document.getElementById("inProgressContent");
 const completedContent = document.getElementById("completedContent");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const STATUS_OPTIONS = ["Not started", "In progress", "Submitted"];
+const courseTitle = document.getElementById("course-title");
+
+function initializeSelectedCourseTitle() {
+  if (!courseTitle) {
+    return;
+  }
+
+  const selectedCourse = sessionStorage.getItem("selectedStudentCourse");
+  if (!selectedCourse) {
+    return;
+  }
+
+  try {
+    const parsedCourse = JSON.parse(selectedCourse);
+    if (parsedCourse?.courseCode) {
+      courseTitle.textContent = parsedCourse.courseCode;
+      document.title = `Smart Course Companion | ${parsedCourse.courseCode}`;
+    }
+  } catch (error) {
+    console.error("Unable to load selected course title:", error);
+  }
+}
 
 function parseDueDateValue(value) {
   const timestamp = Date.parse(String(value).trim());
@@ -338,3 +360,4 @@ if (sortDueDateBtn) {
 
 decorateCompletedRows();
 setActiveTab(false);
+initializeSelectedCourseTitle();
