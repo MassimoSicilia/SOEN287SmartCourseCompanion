@@ -41,7 +41,8 @@ if (signUpForm) {
 
     const password = document.getElementById("password").value.trim();
     const confirmPasswordInput = document.getElementById("passwordWord2");
-    const username = document.getElementById("username").value.trim();
+    const firstName = document.getElementById("first_name").value.trim();
+    const lastName = document.getElementById("last_name").value.trim();
     const email = document.getElementById("email").value.trim();
     const studentID = studentIdInput?.value.trim() || null;
     const role = isStudentRadio?.checked
@@ -60,7 +61,8 @@ if (signUpForm) {
         password,
         options: {
           data: {
-            username,
+            first_name: firstName,
+            last_name: lastName,
             role,
             student_id: role === AccountStatus.STUDENT ? studentID : null,
           },
