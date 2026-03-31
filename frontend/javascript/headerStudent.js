@@ -1,4 +1,24 @@
 function initializeHeaderBehavior(container) {
+  function getSelectedCoursePath() {
+    const selectedCourse = sessionStorage.getItem("selectedStudentCourse");
+    if (!selectedCourse) {
+      return "courseStudent.html";
+    }
+
+    try {
+      const parsedCourse = JSON.parse(selectedCourse);
+      if (parsedCourse?.courseOfferingId) {
+        return `courseStudent.html?courseId=${encodeURIComponent(
+          parsedCourse.courseOfferingId,
+        )}`;
+      }
+    } catch (error) {
+      console.error("Unable to parse selected student course:", error);
+    }
+
+    return "courseStudent.html";
+  }
+
   const menuButton = document.getElementById("menu-button");
   const offScreenMenu = document.getElementById("off-screen-menu");
   const menuCloseButton = document.getElementById("menu-close-button");
@@ -31,7 +51,7 @@ function initializeHeaderBehavior(container) {
   const specificCourseMenuItem = document.getElementById("specific-course-menu-item");
   if (specificCourseMenuItem) {
     specificCourseMenuItem.onclick = function () {
-      window.location.href = "courseStudent.html";
+      window.location.href = getSelectedCoursePath();
     };
   }
 
@@ -51,7 +71,16 @@ function initializeHeaderBehavior(container) {
 
   const signOutMenuItem = document.getElementById("sign-out-menu-item");
   if (signOutMenuItem) {
-    signOutMenuItem.onclick = function () {
+    signOutMenuItem.onclick = async function () {
+      try {
+        if (window.supabaseClient) {
+          await window.supabaseClient.auth.signOut();
+        }
+      } catch (error) {
+        console.error("Unable to sign out cleanly:", error);
+      }
+
+      sessionStorage.removeItem("selectedStudentCourse");
       window.location.href = "login.html";
     };
   }

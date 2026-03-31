@@ -294,6 +294,17 @@ body {
   margin: -20px 0 0;
 }
 
+.courses-status-message {
+  min-height: 20px;
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.courses-status-message.is-error {
+  color: #b91c1c;
+}
+
 .courses-div {
   width: min(1100px, 92%);
   margin: 24px auto 30px;
@@ -347,6 +358,17 @@ body {
   flex-wrap: wrap;
   gap: 12px;
   padding: 0 12px 12px;
+}
+
+.courses-empty-state {
+  width: 100%;
+  border: 1px dashed #c9d7ee;
+  border-radius: 12px;
+  padding: 28px 20px;
+  background: rgba(248, 251, 255, 0.9);
+  color: var(--text-muted);
+  text-align: center;
+  font-weight: 600;
 }
 
 .course-card {
@@ -510,6 +532,7 @@ body {
   color: var(--text-main);
 }
 
+#addCourseForm select,
 #addCourseForm input {
   border: 1px solid #c9d7ee;
   border-radius: 10px;
@@ -522,10 +545,21 @@ body {
     box-shadow 0.2s ease;
 }
 
+#addCourseForm select:focus,
 #addCourseForm input:focus {
   outline: none;
   border-color: #86a6e6;
   box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.13);
+}
+
+.selected-course-preview {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border-radius: 10px;
+  background: #f8fbff;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 #addCourseForm button[type="submit"] {
