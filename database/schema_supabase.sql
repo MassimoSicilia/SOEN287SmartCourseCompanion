@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS public.users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_username_key;
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_email_key;
+
 CREATE TABLE IF NOT EXISTS public.student_profiles (
   student_profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.users(user_id) ON DELETE CASCADE,
@@ -108,30 +111,82 @@ CREATE TABLE IF NOT EXISTS public.course_template_assessments (
   display_order INT NOT NULL DEFAULT 1
 );
 
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.users (user_id, username, email, role)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data ->> 'username', split_part(NEW.email, '@', 1)),
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data ->> 'role', 'student')
-  )
-  ON CONFLICT (user_id) DO NOTHING;
-
-  RETURN NEW;
-END;
-$$;
-
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+INSERT INTO public.users (user_id, username, email, role)
+SELECT
+  au.id,
+  CASE
+    WHEN EXISTS (
+      SELECT 1
+      FROM public.users existing_users
+      WHERE existing_users.username = COALESCE(
+        NULLIF(au.raw_user_meta_data ->> 'username', ''),
+        split_part(au.email, '@', 1),
+        'user'
+      )
+        AND existing_users.user_id <> au.id
+    ) THEN
+      COALESCE(
+        NULLIF(au.raw_user_meta_data ->> 'username', ''),
+        split_part(au.email, '@', 1),
+        'user'
+      ) || '_' || left(replace(au.id::text, '-', ''), 8)
+    ELSE
+      COALESCE(
+        NULLIF(au.raw_user_meta_data ->> 'username', ''),
+        split_part(au.email, '@', 1),
+        'user'
+      )
+  END,
+  au.email,
+  CASE
+    WHEN COALESCE(NULLIF(au.raw_user_meta_data ->> 'role', ''), 'student') = 'admin' THEN 'admin'
+    ELSE 'student'
+  END
+FROM auth.users au
+ON CONFLICT (user_id) DO NOTHING;
+
+DO $$
+BEGIN
+  INSERT INTO public.student_profiles (
+    user_id,
+    student_number,
+    first_name,
+    last_name,
+    program,
+    faculty
+  )
+  SELECT
+    au.id,
+    au.raw_user_meta_data ->> 'student_id',
+    left(
+      COALESCE(
+        NULLIF(au.raw_user_meta_data ->> 'first_name', ''),
+        NULLIF(au.raw_user_meta_data ->> 'username', ''),
+        split_part(au.email, '@', 1),
+        'Student'
+      ),
+      100
+    ),
+    left(COALESCE(NULLIF(au.raw_user_meta_data ->> 'last_name', ''), 'Student'), 100),
+    left(NULLIF(au.raw_user_meta_data ->> 'program', ''), 150),
+    left(NULLIF(au.raw_user_meta_data ->> 'faculty', ''), 150)
+  FROM auth.users au
+  WHERE COALESCE(au.raw_user_meta_data ->> 'role', 'student') = 'student'
+    AND NULLIF(au.raw_user_meta_data ->> 'student_id', '') IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.student_profiles existing_profiles
+      WHERE existing_profiles.student_number = au.raw_user_meta_data ->> 'student_id'
+        AND existing_profiles.user_id <> au.id
+    )
+  ON CONFLICT (user_id) DO NOTHING;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'student_profiles backfill skipped: %', SQLERRM;
+END
+$$;
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.student_profiles ENABLE ROW LEVEL SECURITY;
@@ -156,6 +211,12 @@ CREATE POLICY "users can update own profile"
   FOR UPDATE
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "users can insert own profile" ON public.users;
+CREATE POLICY "users can insert own profile"
+  ON public.users
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
 DROP POLICY IF EXISTS "students can read own profile details" ON public.student_profiles;
 CREATE POLICY "students can read own profile details"
   ON public.student_profiles
@@ -167,6 +228,12 @@ CREATE POLICY "students can manage own profile details"
   ON public.student_profiles
   FOR ALL
   USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "students can insert own profile details" ON public.student_profiles;
+CREATE POLICY "students can insert own profile details"
+  ON public.student_profiles
+  FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "authenticated users can read terms" ON public.terms;
