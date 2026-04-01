@@ -1,36 +1,11 @@
-const ADMIN_COURSES_STORAGE_KEY = "adminCoursesState";
+const supabaseClient = window.supabaseClient;
 const disabledCoursesList = document.querySelector(".courses-list");
 
-function loadCourseState() {
-  const savedState = window.localStorage.getItem(ADMIN_COURSES_STORAGE_KEY);
-
-  if (!savedState) {
-    return {
-      active: [],
-      disabled: [],
-    };
-  }
-
-  try {
-    const parsedState = JSON.parse(savedState);
-    return {
-      active: Array.isArray(parsedState.active) ? parsedState.active : [],
-      disabled: Array.isArray(parsedState.disabled) ? parsedState.disabled : [],
-    };
-  } catch (error) {
-    console.error("Unable to parse admin course state:", error);
-    return {
-      active: [],
-      disabled: [],
-    };
-  }
-}
-
-function saveCourseState(state) {
-  window.localStorage.setItem(
-    ADMIN_COURSES_STORAGE_KEY,
-    JSON.stringify(state),
-  );
+function createEmptyState() {
+  const message = document.createElement("p");
+  message.className = "courses-empty-state";
+  message.textContent = "No disabled courses found.";
+  return message;
 }
 
 function closeAllCourseMenus() {
@@ -39,45 +14,66 @@ function closeAllCourseMenus() {
   });
 }
 
+async function getCurrentAdminProfile() {
+  if (!supabaseClient) {
+    throw new Error("Supabase client is not loaded.");
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!user) {
+    throw new Error("You must be logged in to view disabled courses.");
+  }
+
+  return {
+    userId: user.id,
+  };
+}
+
+async function loadDisabledCourses() {
+  const adminProfile = await getCurrentAdminProfile();
+
+  const { data, error } = await supabaseClient
+    .from("available_courses")
+    .select(
+      "course_offering_id, course_code, course_name, section, instructor_name, term, credits, is_enabled, created_by_user_id",
+    )
+    .eq("is_enabled", false)
+    .eq("created_by_user_id", adminProfile.userId)
+    .order("course_code", { ascending: true })
+    .order("section", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map((course) => ({
+    id: course.course_offering_id,
+    code: course.course_code,
+    name: course.course_name,
+    professor: course.instructor_name,
+    section: course.section,
+    term: course.term,
+    credits: course.credits,
+  }));
+}
+
 function createCourseCard(course) {
   const card = document.createElement("div");
   card.className = "course-card";
   card.dataset.courseId = course.id;
-  card.innerHTML = `
-    <h3>${course.code} - ${course.name}</h3>
-    <p><span class="course-label">Prof:</span> ${course.professor}</p>
-    <p><span class="course-label">Section:</span> ${course.section}</p>
-    <p><span class="course-label">Term:</span> ${course.term}</p>
-    <p><span class="course-label">Credits:</span> ${course.credits}</p>
-  `;
 
-  return card;
-}
-
-function enableCourse(courseId) {
-  const state = loadCourseState();
-  const courseIndex = state.disabled.findIndex((course) => course.id === courseId);
-
-  if (courseIndex === -1) {
-    return;
-  }
-
-  const [course] = state.disabled.splice(courseIndex, 1);
-  state.active.unshift(course);
-  saveCourseState(state);
-  renderDisabledCourses();
-}
-
-function addCourseActions(card) {
-  if (!card || card.querySelector(".course-actions-btn")) {
-    return;
-  }
-
-  const courseId = card.dataset.courseId;
   const actionsButton = document.createElement("button");
   actionsButton.className = "course-actions-btn";
   actionsButton.type = "button";
-  actionsButton.setAttribute("aria-label", "Course actions");
+  actionsButton.setAttribute("aria-label", `Manage ${course.code} ${course.name}`);
   actionsButton.innerHTML = "<span></span><span></span><span></span>";
 
   const actionsMenu = document.createElement("div");
@@ -89,8 +85,24 @@ function addCourseActions(card) {
   enableButton.textContent = "Enable course";
 
   actionsMenu.appendChild(enableButton);
-  card.insertBefore(actionsButton, card.firstChild);
-  card.insertBefore(actionsMenu, card.firstChild.nextSibling);
+  card.append(actionsButton, actionsMenu);
+
+  const title = document.createElement("h3");
+  title.textContent = `${course.code} - ${course.name}`;
+
+  const professor = document.createElement("p");
+  professor.innerHTML = `<span class="course-label">Prof:</span> ${course.professor}`;
+
+  const section = document.createElement("p");
+  section.innerHTML = `<span class="course-label">Section:</span> ${course.section}`;
+
+  const term = document.createElement("p");
+  term.innerHTML = `<span class="course-label">Term:</span> ${course.term}`;
+
+  const credits = document.createElement("p");
+  credits.innerHTML = `<span class="course-label">Credits:</span> ${course.credits}`;
+
+  card.append(title, professor, section, term, credits);
 
   actionsButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -104,25 +116,56 @@ function addCourseActions(card) {
     actionsMenu.classList.toggle("is-open");
   });
 
-  enableButton.addEventListener("click", (event) => {
+  enableButton.addEventListener("click", async (event) => {
     event.stopPropagation();
-    enableCourse(courseId);
+    await enableCourse(course.id);
   });
+
+  return card;
 }
 
-function renderDisabledCourses() {
+async function enableCourse(courseId) {
+  closeAllCourseMenus();
+
+  const { error } = await supabaseClient
+    .from("available_courses")
+    .update({
+      is_enabled: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("course_offering_id", courseId);
+
+  if (error) {
+    alert(error.message || "Failed to enable course.");
+    return;
+  }
+
+  await renderDisabledCourses();
+}
+
+async function renderDisabledCourses() {
   if (!disabledCoursesList) {
     return;
   }
 
-  const state = loadCourseState();
   disabledCoursesList.innerHTML = "";
 
-  state.disabled.forEach((course) => {
-    const card = createCourseCard(course);
-    addCourseActions(card);
-    disabledCoursesList.appendChild(card);
-  });
+  try {
+    const courses = await loadDisabledCourses();
+
+    if (courses.length === 0) {
+      disabledCoursesList.appendChild(createEmptyState());
+      return;
+    }
+
+    courses.forEach((course) => {
+      const card = createCourseCard(course);
+      disabledCoursesList.appendChild(card);
+    });
+  } catch (error) {
+    console.error("Unable to load disabled courses:", error);
+    disabledCoursesList.appendChild(createEmptyState());
+  }
 }
 
 document.addEventListener("click", closeAllCourseMenus);
