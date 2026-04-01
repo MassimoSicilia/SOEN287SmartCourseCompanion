@@ -382,6 +382,10 @@ function handleStatusChange(event) {
     status: target.value,
   });
   renderAssessments();
+
+  if (target.value === "Submitted") {
+    setActiveTab(true);
+  }
 }
 
 function handleInProgressBlur(event) {
@@ -455,7 +459,7 @@ async function initializeStudentCoursePage() {
       JSON.stringify(studentCourseState.course),
     );
 
-    const template = courseDataStore.getCourseTemplate(
+    const template = await courseDataStore.loadCourseTemplate(
       studentCourseState.course.courseOfferingId,
     );
 

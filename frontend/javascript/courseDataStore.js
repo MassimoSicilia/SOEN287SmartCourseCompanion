@@ -27,11 +27,17 @@ function createAssessmentId() {
 
 function normalizeAssessment(assessment) {
   return {
-    id: assessment?.id || createAssessmentId(),
-    name: String(assessment?.name || "").trim(),
-    weight: String(assessment?.weight || "").trim(),
-    dueDate: String(assessment?.dueDate || "").trim(),
+    id: assessment?.id || assessment?.assessment_id || createAssessmentId(),
+    name: String(assessment?.name || assessment?.assessment_name || "").trim(),
+    weight: String(
+      assessment?.weight ?? assessment?.weight_percent ?? "",
+    ).trim(),
+    dueDate: String(assessment?.dueDate || assessment?.due_date || "").trim(),
   };
+}
+
+function getSupabaseClient() {
+  return window.supabaseClient || null;
 }
 
 function getAllCourseTemplates() {
@@ -66,6 +72,94 @@ function saveCourseTemplate(courseId, assessments) {
       : [],
   };
   writeJsonStorage(COURSE_TEMPLATE_STORAGE_KEY, templates);
+}
+
+async function loadCourseTemplate(courseId) {
+  const supabaseClient = getSupabaseClient();
+
+  if (!supabaseClient || !courseId) {
+    return getCourseTemplate(courseId);
+  }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("course_assessments")
+      .select(
+        "assessment_id, assessment_name, weight_percent, due_date, display_order",
+      )
+      .eq("course_offering_id", courseId)
+      .order("display_order", { ascending: true })
+      .order("due_date", { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    const normalizedAssessments = Array.isArray(data)
+      ? data.map(normalizeAssessment)
+      : [];
+
+    saveCourseTemplate(courseId, normalizedAssessments);
+    return {
+      courseId,
+      assessments: normalizedAssessments,
+    };
+  } catch (error) {
+    console.error("Unable to load course template from database:", error);
+    return getCourseTemplate(courseId);
+  }
+}
+
+async function saveCourseTemplateToDatabase(courseId, assessments) {
+  const supabaseClient = getSupabaseClient();
+
+  if (!supabaseClient || !courseId) {
+    return;
+  }
+
+  const normalizedAssessments = Array.isArray(assessments)
+    ? assessments.map(normalizeAssessment)
+    : [];
+
+  const { error: deleteError } = await supabaseClient
+    .from("course_assessments")
+    .delete()
+    .eq("course_offering_id", courseId);
+
+  if (deleteError) {
+    throw deleteError;
+  }
+
+  if (normalizedAssessments.length === 0) {
+    return;
+  }
+
+  const rows = normalizedAssessments.map((assessment, index) => ({
+    assessment_id: assessment.id,
+    course_offering_id: courseId,
+    assessment_name: assessment.name,
+    weight_percent: assessment.weight,
+    due_date: assessment.dueDate,
+    display_order: index + 1,
+  }));
+
+  const { error: insertError } = await supabaseClient
+    .from("course_assessments")
+    .insert(rows);
+
+  if (insertError) {
+    throw insertError;
+  }
+}
+
+async function saveCourseTemplateEverywhere(courseId, assessments) {
+  saveCourseTemplate(courseId, assessments);
+
+  try {
+    await saveCourseTemplateToDatabase(courseId, assessments);
+  } catch (error) {
+    console.error("Unable to save course template to database:", error);
+  }
 }
 
 function getAllStudentEnrollments() {
@@ -144,7 +238,9 @@ function removeStudentCourseProgress(userId, courseId) {
 window.CourseDataStore = {
   createAssessmentId,
   getCourseTemplate,
+  loadCourseTemplate,
   saveCourseTemplate,
+  saveCourseTemplateEverywhere,
   getStudentEnrollments,
   upsertStudentEnrollment,
   removeStudentEnrollment,

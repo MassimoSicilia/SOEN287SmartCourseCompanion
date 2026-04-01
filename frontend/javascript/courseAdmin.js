@@ -6,11 +6,13 @@ const editCourseBtn = document.getElementById("editCourseBtn");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const container = document.querySelector(".container");
 const categoriesBox = document.querySelector(".categories-box");
+const templateActionMessage = document.getElementById("template-action-message");
 
 const adminCourseState = {
   course: null,
   assessments: [],
   isEditMode: false,
+  lastRemovedAssessment: null,
 };
 
 function getCourseIdFromQuery() {
@@ -95,7 +97,7 @@ function createEmptyRow() {
     createCell("No assessments have been added yet."),
     createCell(""),
     createCell(""),
-    createCell("Template"),
+    createCell(""),
     createCell("--"),
   );
   return row;
@@ -109,10 +111,67 @@ function createDisplayRow(assessment) {
     createCell(assessment.name),
     createCell(assessment.weight),
     createCell(assessment.dueDate),
-    createCell("Template"),
+    createCell(""),
     createCell("--"),
   );
   return row;
+}
+
+function renderTemplateActionMessage() {
+  if (!templateActionMessage) {
+    return;
+  }
+
+  templateActionMessage.innerHTML = "";
+
+  if (!adminCourseState.isEditMode || !adminCourseState.lastRemovedAssessment) {
+    return;
+  }
+
+  const banner = document.createElement("div");
+  banner.className = "template-action-banner";
+
+  const message = document.createElement("span");
+  message.textContent = `"${adminCourseState.lastRemovedAssessment.assessment.name || "Assessment"}" removed.`;
+
+  const undoButton = document.createElement("button");
+  undoButton.type = "button";
+  undoButton.textContent = "Undo";
+  undoButton.addEventListener("click", undoRemoveAssessment);
+
+  banner.append(message, undoButton);
+  templateActionMessage.appendChild(banner);
+}
+
+function removeAssessment(assessmentId) {
+  const assessmentIndex = adminCourseState.assessments.findIndex(
+    (assessment) => assessment.id === assessmentId,
+  );
+
+  if (assessmentIndex === -1) {
+    return;
+  }
+
+  const [removedAssessment] = adminCourseState.assessments.splice(assessmentIndex, 1);
+  adminCourseState.lastRemovedAssessment = {
+    assessment: removedAssessment,
+    index: assessmentIndex,
+  };
+  renderTemplateActionMessage();
+  renderAssessmentRows();
+}
+
+function undoRemoveAssessment() {
+  if (!adminCourseState.lastRemovedAssessment) {
+    return;
+  }
+
+  const { assessment, index } = adminCourseState.lastRemovedAssessment;
+  const safeIndex = Math.max(0, Math.min(index, adminCourseState.assessments.length));
+  adminCourseState.assessments.splice(safeIndex, 0, assessment);
+  adminCourseState.lastRemovedAssessment = null;
+  renderTemplateActionMessage();
+  renderAssessmentRows();
 }
 
 function createEditableRow(assessment) {
@@ -128,13 +187,18 @@ function createEditableRow(assessment) {
   const weightInput = buildAssessmentInput(assessment.weight, "Weight %", "text");
   weightInput.inputMode = "decimal";
   const dueDateInput = buildAssessmentInput(assessment.dueDate, "", "date");
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "assessment-remove-btn";
+  removeButton.textContent = "Remove";
+  removeButton.addEventListener("click", () => removeAssessment(assessment.id));
 
   row.append(
     createCell(nameInput),
     createCell(weightInput),
     createCell(dueDateInput),
-    createCell("Template"),
-    createCell("--"),
+    createCell(""),
+    createCell(removeButton),
   );
   return row;
 }
@@ -148,6 +212,7 @@ function renderAssessmentRows() {
 
   if (adminCourseState.assessments.length === 0) {
     categoriesBox.insertAdjacentElement("afterend", createEmptyRow());
+    renderTemplateActionMessage();
     return;
   }
 
@@ -159,6 +224,7 @@ function renderAssessmentRows() {
     previousNode.insertAdjacentElement("afterend", row);
     previousNode = row;
   });
+  renderTemplateActionMessage();
 }
 
 function normalizeWeight(value) {
@@ -232,20 +298,21 @@ function updateEditButtonLabel() {
     : "Edit Course Details";
 }
 
-function persistTemplate() {
+async function persistTemplate() {
   if (!adminCourseState.course || !courseDataStore) {
     return;
   }
 
-  courseDataStore.saveCourseTemplate(
+  await courseDataStore.saveCourseTemplateEverywhere(
     adminCourseState.course.id,
     adminCourseState.assessments,
   );
 }
 
-function toggleEditCourseDetails() {
+async function toggleEditCourseDetails() {
   if (!adminCourseState.isEditMode) {
     adminCourseState.isEditMode = true;
+    adminCourseState.lastRemovedAssessment = null;
     updateEditButtonLabel();
     renderAssessmentRows();
     return;
@@ -254,7 +321,8 @@ function toggleEditCourseDetails() {
   try {
     adminCourseState.assessments = collectAssessmentsFromInputs();
     adminCourseState.isEditMode = false;
-    persistTemplate();
+    adminCourseState.lastRemovedAssessment = null;
+    await persistTemplate();
     updateEditButtonLabel();
     renderAssessmentRows();
   } catch (error) {
@@ -264,6 +332,7 @@ function toggleEditCourseDetails() {
 
 function addAssessment() {
   adminCourseState.isEditMode = true;
+  adminCourseState.lastRemovedAssessment = null;
   adminCourseState.assessments.push({
     id: courseDataStore.createAssessmentId(),
     name: "",
@@ -279,7 +348,7 @@ function parseDueDateValue(value) {
   return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
-function sortAssessmentsByDueDate() {
+async function sortAssessmentsByDueDate() {
   if (adminCourseState.isEditMode) {
     try {
       adminCourseState.assessments = collectAssessmentsFromInputs();
@@ -292,7 +361,7 @@ function sortAssessmentsByDueDate() {
     return parseDueDateValue(left.dueDate) - parseDueDateValue(right.dueDate);
   });
 
-  persistTemplate();
+  await persistTemplate();
   renderAssessmentRows();
 }
 
@@ -324,7 +393,9 @@ async function initializeAdminCoursePage() {
       JSON.stringify(adminCourseState.course),
     );
 
-    const savedTemplate = courseDataStore.getCourseTemplate(adminCourseState.course.id);
+    const savedTemplate = await courseDataStore.loadCourseTemplate(
+      adminCourseState.course.id,
+    );
     adminCourseState.assessments = savedTemplate.assessments;
 
     applyCourseHeader();

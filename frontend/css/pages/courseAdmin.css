@@ -98,6 +98,42 @@ h1 {
     font-weight: 600;
 }
 
+.template-action-message {
+    min-height: 24px;
+    margin-top: 12px;
+}
+
+.template-action-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid #d5e5ff;
+    border-radius: 999px;
+    background: #f8fbff;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.template-action-banner button,
+.assessment-remove-btn {
+    border: 1px solid #b7cdf2;
+    background: var(--panel-tint);
+    color: var(--primary-blue);
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.template-action-banner button:hover,
+.assessment-remove-btn:hover {
+    background: #dcecff;
+}
+
 .add-assessment-row > div:first-child {
     display: flex;
     align-items: center;
