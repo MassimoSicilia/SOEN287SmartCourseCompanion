@@ -1,192 +1,26 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smart Course Companion | Student Grades</title>
     <link rel="stylesheet" href="../../css/pages/header.css">
     <link rel="stylesheet" href="../../css/pages/gradesStudent.css">
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      defer
+    ></script>
+    <script src="../../javascript/supabaseClient.js" defer></script>
+    <script src="../../javascript/courseDataStore.js" defer></script>
     <script src="../../javascript/headerStudent.js" defer></script>
     <script src="../../javascript/gradesStudent.js" defer></script>
 </head>
 <body>
     <div id="site-header" data-header-title="Grades" data-active-menu="grades"></div>
-    <div class = "container">
+    <div class="container">
         <h1>Grades - All courses</h1>
     </div>
-    <div class = "course-grades">
-        <div class = "course-row-box">
-            <div class="course-box-header">
-                <h2>SOEN 287</h2>
-                <div class="course-box-columns">
-                    <span>Assessments</span>
-                    <span>Grades</span>
-                    <span>Weights</span>
-                </div>
-            </div>
-            <ul class="category-list">
-                <li>
-                    <span class = "col-assessment-name">Assignments</span>
-                    <span class = "col-grade-value">85%</span>
-                    <span class = "col-weight-value"><b>10%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Quizzes</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>5%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Midterm</span>
-                    <span class = "col-grade-value">75%</span>
-                    <span class = "col-weight-value"><b>25%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Lab</span>
-                    <span class = "col-grade-value">90%</span>
-                    <span class = "col-weight-value"><b>5%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Project</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>5%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Final</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>50%</b></span>
-                </li>
-                <li class="course-summary-row">
-                    <span class="col-assessment-name"><b>Average:</b></span>
-                    <span class="course-average-value"></span>
-                    <span class="course-total-weight-value"></span>
-                </li>
-            </ul>
-        </div>
-        <div class = "course-row-box">
-            <div class="course-box-header">
-                <h2>SOEN 228</h2>
-                <div class="course-box-columns">
-                    <span>Assessments</span>
-                    <span>Grades</span>
-                    <span>Weights</span>
-                </div>
-            </div>
-            <ul class="category-list">
-                <li>
-                    <span class = "col-assessment-name">Quizzes</span>
-                    <span class = "col-grade-value">88%</span>
-                    <span class = "col-weight-value"><b>10%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Midterm</span>
-                    <span class = "col-grade-value">84%</span>
-                    <span class = "col-weight-value"><b>25%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Lab</span>
-                    <span class = "col-grade-value">90%</span>
-                    <span class = "col-weight-value"><b>15%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Final</span>
-                    <span class = "col-grade-value">85%</span>
-                    <span class = "col-weight-value"><b>50%</b></span>
-                </li>
-                <li class="course-summary-row">
-                    <span class="col-assessment-name"><b>Average:</b></span>
-                    <span class="course-average-value"></span>
-                    <span class="course-total-weight-value"></span>
-                </li>
-            </ul>
-        </div>
-
-        <div class = "course-row-box">
-            <div class="course-box-header">
-                <h2>COMP 352</h2>
-                <div class="course-box-columns">
-                    <span>Assessments</span>
-                    <span>Grades</span>
-                    <span>Weights</span>
-                </div>
-            </div>
-            <ul class="category-list">
-                <li>
-                    <span class = "col-assessment-name">Quizzes</span>
-                    <span class = "col-grade-value">89%</span>
-                    <span class = "col-weight-value"><b>10%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Midterm</span>
-                    <span class = "col-grade-value">85%</span>
-                    <span class = "col-weight-value"><b>25%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Lab</span>
-                    <span class = "col-grade-value">93%</span>
-                    <span class = "col-weight-value"><b>10%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Project</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>5%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Final</span>
-                    <span class = "col-grade-value">90%</span>
-                    <span class = "col-weight-value"><b>50%</b></span>
-                </li>
-                <li class="course-summary-row">
-                    <span class="col-assessment-name"><b>Average:</b></span>
-                    <span class="course-average-value"></span>
-                    <span class="course-total-weight-value"></span>
-                </li>
-            </ul>
-        </div>
-
-        <div class = "course-row-box">
-            <div class="course-box-header">
-                <h2>COMP 346</h2>
-                <div class="course-box-columns">
-                    <span>Assessments</span>
-                    <span>Grades</span>
-                    <span>Weights</span>
-                </div>
-            </div>
-            <ul class="category-list">
-                <li>
-                    <span class = "col-assessment-name">Quizzes</span>
-                    <span class = "col-grade-value">90%</span>
-                    <span class = "col-weight-value"><b>10%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Midterm</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>25%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Lab</span>
-                    <span class = "col-grade-value">95%</span>
-                    <span class = "col-weight-value"><b>15%</b></span>
-                </li>
-                <li>
-                    <span class = "col-assessment-name">Final</span>
-                    <span class = "col-grade-value">80%</span>
-                    <span class = "col-weight-value"><b>50%</b></span>
-                </li>
-                <li class="empty-assessment-row" aria-hidden="true">
-                    <span class="col-assessment-name">&nbsp;</span>
-                    <span>&nbsp;</span>
-                    <span>&nbsp;</span>
-                </li>
-                <li class="empty-assessment-row" aria-hidden="true">
-                    <span class="col-assessment-name">&nbsp;</span>
-                    <span>&nbsp;</span>
-                    <span>&nbsp;</span>
-                </li>
-                <li class="course-summary-row">
-                    <span class="col-assessment-name"><b>Average:</b></span>
-                    <span class="course-average-value"></span>
-                    <span class="course-total-weight-value"></span>
-                </li>
-            </ul>
-        </div>
-    </div>
+    <div class="course-grades"></div>
 </body>
 </html>
