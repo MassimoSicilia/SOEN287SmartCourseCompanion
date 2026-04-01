@@ -7,6 +7,11 @@ const closeCreateCourseModal = document.getElementById(
 );
 const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
+const courseTemplateSelect = document.getElementById("course-template-select");
+
+const adminDashboardState = {
+  reusableTemplates: [],
+};
 
 function setSelectedAdminCourse(course) {
   if (!course) {
@@ -158,6 +163,28 @@ async function loadCourses() {
   }));
 }
 
+function renderReusableTemplateOptions() {
+  if (!courseTemplateSelect) {
+    return;
+  }
+
+  courseTemplateSelect.innerHTML = '<option value="">No template</option>';
+
+  adminDashboardState.reusableTemplates.forEach((template) => {
+    const option = document.createElement("option");
+    option.value = template.templateId;
+    option.textContent = template.templateName;
+    courseTemplateSelect.appendChild(option);
+  });
+}
+
+async function loadReusableTemplatesForAdmin() {
+  const adminProfile = await getCurrentAdminProfile();
+  adminDashboardState.reusableTemplates =
+    await window.CourseDataStore.loadReusableTemplates(adminProfile.userId);
+  renderReusableTemplateOptions();
+}
+
 async function disableCourse(courseId) {
   const confirmed = window.confirm(
     "Disable this course? It will appear on the Disabled Courses page.",
@@ -258,7 +285,13 @@ function closeModal() {
 }
 
 if (createCourseButton && createCourseModal) {
-  createCourseButton.onclick = function () {
+  createCourseButton.onclick = async function () {
+    try {
+      await loadReusableTemplatesForAdmin();
+    } catch (error) {
+      console.error("Unable to load reusable templates:", error);
+    }
+
     createCourseModal.classList.add("is-open");
     document.body.style.overflow = "hidden";
   };
@@ -286,6 +319,7 @@ if (createCourseForm && coursesList) {
       .toUpperCase();
     const credits = document.getElementById("course-credits")?.value.trim();
     const term = document.getElementById("term")?.value;
+    const selectedTemplateId = courseTemplateSelect?.value || "";
 
     if (credits && !/^\d+$/.test(credits)) {
       alert("Credits must be a number.");
@@ -308,23 +342,43 @@ if (createCourseForm && coursesList) {
     try {
       const adminProfile = await getCurrentAdminProfile();
       const timestamp = new Date().toISOString();
-      const { error } = await supabaseClient.from("available_courses").insert({
-        course_code: courseCode,
-        course_name: courseName,
-        section,
-        instructor_name: adminProfile.fullName,
-        credits: Number(credits),
-        term,
-        created_by_user_id: adminProfile.userId,
-        created_at: timestamp,
-        updated_at: timestamp,
-      });
+      const { data, error } = await supabaseClient
+        .from("available_courses")
+        .insert({
+          course_code: courseCode,
+          course_name: courseName,
+          section,
+          instructor_name: adminProfile.fullName,
+          credits: Number(credits),
+          term,
+          created_by_user_id: adminProfile.userId,
+          created_at: timestamp,
+          updated_at: timestamp,
+        })
+        .select(
+          "course_offering_id, course_code, course_name, section, instructor_name, credits, term",
+        )
+        .single();
 
       if (error) {
         throw error;
       }
 
+      if (selectedTemplateId) {
+        const selectedTemplate = adminDashboardState.reusableTemplates.find(
+          (template) => template.templateId === selectedTemplateId,
+        );
+
+        if (selectedTemplate) {
+          await window.CourseDataStore.applyReusableTemplateToCourse(
+            data.course_offering_id,
+            selectedTemplate,
+          );
+        }
+      }
+
       createCourseForm.reset();
+      renderReusableTemplateOptions();
       closeModal();
       await renderCourses();
     } catch (error) {

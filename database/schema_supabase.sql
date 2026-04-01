@@ -313,3 +313,49 @@ CREATE INDEX IF NOT EXISTS idx_available_courses_created_by_user_id
 
 CREATE INDEX IF NOT EXISTS idx_available_courses_is_enabled
   ON public.available_courses(is_enabled);
+
+ALTER TABLE public.assessments
+  DROP CONSTRAINT IF EXISTS assessments_course_offering_id_fkey;
+
+ALTER TABLE public.assessments
+  ADD CONSTRAINT assessments_course_offering_id_fkey
+  FOREIGN KEY (course_offering_id)
+  REFERENCES public.available_courses(course_offering_id)
+  ON DELETE CASCADE;
+
+ALTER TABLE public.assessments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated users can read assessments" ON public.assessments;
+CREATE POLICY "authenticated users can read assessments"
+  ON public.assessments
+  FOR SELECT
+  TO authenticated
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "admins can manage own course assessments" ON public.assessments;
+CREATE POLICY "admins can manage own course assessments"
+  ON public.assessments
+  FOR ALL
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.available_courses ac
+      JOIN public.users u
+        ON u.user_id = auth.uid()
+      WHERE ac.course_offering_id = assessments.course_offering_id
+        AND ac.created_by_user_id = auth.uid()
+        AND u.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.available_courses ac
+      JOIN public.users u
+        ON u.user_id = auth.uid()
+      WHERE ac.course_offering_id = assessments.course_offering_id
+        AND ac.created_by_user_id = auth.uid()
+        AND u.role = 'admin'
+    )
+  );

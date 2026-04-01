@@ -277,6 +277,11 @@ body {
   color: var(--info-text);
 }
 
+.status-pill.not-started {
+  background-color: #f1f5f9;
+  color: #475569;
+}
+
 .courses-header {
   display: flex;
   align-items: center;

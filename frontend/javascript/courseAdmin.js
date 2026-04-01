@@ -3,14 +3,17 @@ const courseDataStore = window.CourseDataStore;
 const courseTitle = document.getElementById("course-title");
 const addAssignmentBtn = document.getElementById("addAssignmentBtn");
 const editCourseBtn = document.getElementById("editCourseBtn");
+const saveTemplateBtn = document.getElementById("saveTemplateBtn");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const container = document.querySelector(".container");
 const categoriesBox = document.querySelector(".categories-box");
+const templateActionMessage = document.getElementById("template-action-message");
 
 const adminCourseState = {
   course: null,
   assessments: [],
   isEditMode: false,
+  lastRemovedAssessment: null,
 };
 
 function getCourseIdFromQuery() {
@@ -64,6 +67,27 @@ async function loadCourseFromSupabase(courseId) {
   };
 }
 
+async function getCurrentAdminUserId() {
+  if (!supabaseClient) {
+    throw new Error("Supabase client is not loaded.");
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!user) {
+    throw new Error("You must be logged in to save a template.");
+  }
+
+  return user.id;
+}
+
 function createCell(content) {
   const cell = document.createElement("div");
   if (content instanceof Node) {
@@ -95,13 +119,17 @@ function createEmptyRow() {
     createCell("No assessments have been added yet."),
     createCell(""),
     createCell(""),
-    createCell("Template"),
+    createCell(""),
     createCell("--"),
   );
   return row;
 }
 
 function createDisplayRow(assessment) {
+  const submissionSummary = courseDataStore.getAssessmentSubmissionSummary(
+    adminCourseState.course?.id,
+    assessment.id,
+  );
   const row = document.createElement("div");
   row.className = "assignment-row";
   row.dataset.assessmentId = assessment.id;
@@ -109,10 +137,67 @@ function createDisplayRow(assessment) {
     createCell(assessment.name),
     createCell(assessment.weight),
     createCell(assessment.dueDate),
-    createCell("Template"),
-    createCell("--"),
+    createCell(submissionSummary.completionStatusText),
+    createCell(submissionSummary.completionRateText),
   );
   return row;
+}
+
+function renderTemplateActionMessage() {
+  if (!templateActionMessage) {
+    return;
+  }
+
+  templateActionMessage.innerHTML = "";
+
+  if (!adminCourseState.isEditMode || !adminCourseState.lastRemovedAssessment) {
+    return;
+  }
+
+  const banner = document.createElement("div");
+  banner.className = "template-action-banner";
+
+  const message = document.createElement("span");
+  message.textContent = `"${adminCourseState.lastRemovedAssessment.assessment.name || "Assessment"}" removed.`;
+
+  const undoButton = document.createElement("button");
+  undoButton.type = "button";
+  undoButton.textContent = "Undo";
+  undoButton.addEventListener("click", undoRemoveAssessment);
+
+  banner.append(message, undoButton);
+  templateActionMessage.appendChild(banner);
+}
+
+function removeAssessment(assessmentId) {
+  const assessmentIndex = adminCourseState.assessments.findIndex(
+    (assessment) => assessment.id === assessmentId,
+  );
+
+  if (assessmentIndex === -1) {
+    return;
+  }
+
+  const [removedAssessment] = adminCourseState.assessments.splice(assessmentIndex, 1);
+  adminCourseState.lastRemovedAssessment = {
+    assessment: removedAssessment,
+    index: assessmentIndex,
+  };
+  renderTemplateActionMessage();
+  renderAssessmentRows();
+}
+
+function undoRemoveAssessment() {
+  if (!adminCourseState.lastRemovedAssessment) {
+    return;
+  }
+
+  const { assessment, index } = adminCourseState.lastRemovedAssessment;
+  const safeIndex = Math.max(0, Math.min(index, adminCourseState.assessments.length));
+  adminCourseState.assessments.splice(safeIndex, 0, assessment);
+  adminCourseState.lastRemovedAssessment = null;
+  renderTemplateActionMessage();
+  renderAssessmentRows();
 }
 
 function createEditableRow(assessment) {
@@ -128,13 +213,18 @@ function createEditableRow(assessment) {
   const weightInput = buildAssessmentInput(assessment.weight, "Weight %", "text");
   weightInput.inputMode = "decimal";
   const dueDateInput = buildAssessmentInput(assessment.dueDate, "", "date");
+  const removeButton = document.createElement("button");
+  removeButton.type = "button";
+  removeButton.className = "assessment-remove-btn";
+  removeButton.textContent = "Remove";
+  removeButton.addEventListener("click", () => removeAssessment(assessment.id));
 
   row.append(
     createCell(nameInput),
     createCell(weightInput),
     createCell(dueDateInput),
-    createCell("Template"),
-    createCell("--"),
+    createCell(""),
+    createCell(removeButton),
   );
   return row;
 }
@@ -148,6 +238,7 @@ function renderAssessmentRows() {
 
   if (adminCourseState.assessments.length === 0) {
     categoriesBox.insertAdjacentElement("afterend", createEmptyRow());
+    renderTemplateActionMessage();
     return;
   }
 
@@ -159,6 +250,7 @@ function renderAssessmentRows() {
     previousNode.insertAdjacentElement("afterend", row);
     previousNode = row;
   });
+  renderTemplateActionMessage();
 }
 
 function normalizeWeight(value) {
@@ -232,20 +324,71 @@ function updateEditButtonLabel() {
     : "Edit Course Details";
 }
 
-function persistTemplate() {
+async function persistTemplate() {
   if (!adminCourseState.course || !courseDataStore) {
     return;
   }
 
-  courseDataStore.saveCourseTemplate(
+  await courseDataStore.saveCourseTemplateEverywhere(
     adminCourseState.course.id,
     adminCourseState.assessments,
   );
 }
 
-function toggleEditCourseDetails() {
+async function saveAsReusableTemplate() {
+  if (!adminCourseState.course || !courseDataStore) {
+    return;
+  }
+
+  try {
+    let assessmentsToSave = adminCourseState.assessments;
+    if (adminCourseState.isEditMode) {
+      assessmentsToSave = collectAssessmentsFromInputs();
+      adminCourseState.assessments = assessmentsToSave;
+      renderAssessmentRows();
+    }
+
+    if (assessmentsToSave.length === 0) {
+      alert("Add at least one assessment before saving a reusable template.");
+      return;
+    }
+
+    const defaultTemplateName = `${adminCourseState.course.code} Template`;
+    const templateName = window.prompt(
+      "Template name:",
+      defaultTemplateName,
+    )?.trim();
+
+    if (!templateName) {
+      return;
+    }
+
+    const templateSummary = window.prompt(
+      "Optional template description:",
+      `Reusable assessment structure for ${adminCourseState.course.code}`,
+    )?.trim() || "";
+
+    const adminUserId = await getCurrentAdminUserId();
+    await courseDataStore.saveReusableTemplate({
+      templateName,
+      templateSummary,
+      createdByUserId: adminUserId,
+      assessments: assessmentsToSave,
+      sourceCourseId: adminCourseState.course.id,
+      sourceCourseCode: adminCourseState.course.code,
+    });
+
+    alert(`Reusable template "${templateName}" saved.`);
+  } catch (error) {
+    console.error("Unable to save reusable template:", error);
+    alert(error.message || "Unable to save this reusable template.");
+  }
+}
+
+async function toggleEditCourseDetails() {
   if (!adminCourseState.isEditMode) {
     adminCourseState.isEditMode = true;
+    adminCourseState.lastRemovedAssessment = null;
     updateEditButtonLabel();
     renderAssessmentRows();
     return;
@@ -254,16 +397,22 @@ function toggleEditCourseDetails() {
   try {
     adminCourseState.assessments = collectAssessmentsFromInputs();
     adminCourseState.isEditMode = false;
-    persistTemplate();
+    adminCourseState.lastRemovedAssessment = null;
+    await persistTemplate();
     updateEditButtonLabel();
     renderAssessmentRows();
   } catch (error) {
     console.error("Unable to save course template:", error);
+    adminCourseState.isEditMode = true;
+    updateEditButtonLabel();
+    renderAssessmentRows();
+    alert(error.message || "Unable to save this course template.");
   }
 }
 
 function addAssessment() {
   adminCourseState.isEditMode = true;
+  adminCourseState.lastRemovedAssessment = null;
   adminCourseState.assessments.push({
     id: courseDataStore.createAssessmentId(),
     name: "",
@@ -279,11 +428,12 @@ function parseDueDateValue(value) {
   return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
-function sortAssessmentsByDueDate() {
+async function sortAssessmentsByDueDate() {
   if (adminCourseState.isEditMode) {
     try {
       adminCourseState.assessments = collectAssessmentsFromInputs();
     } catch (error) {
+      alert(error.message || "Unable to sort assessments until the current rows are valid.");
       return;
     }
   }
@@ -292,8 +442,13 @@ function sortAssessmentsByDueDate() {
     return parseDueDateValue(left.dueDate) - parseDueDateValue(right.dueDate);
   });
 
-  persistTemplate();
-  renderAssessmentRows();
+  try {
+    await persistTemplate();
+    renderAssessmentRows();
+  } catch (error) {
+    console.error("Unable to save sorted course template:", error);
+    alert(error.message || "Unable to save the sorted assessments.");
+  }
 }
 
 function applyCourseHeader() {
@@ -324,7 +479,9 @@ async function initializeAdminCoursePage() {
       JSON.stringify(adminCourseState.course),
     );
 
-    const savedTemplate = courseDataStore.getCourseTemplate(adminCourseState.course.id);
+    const savedTemplate = await courseDataStore.loadCourseTemplate(
+      adminCourseState.course.id,
+    );
     adminCourseState.assessments = savedTemplate.assessments;
 
     applyCourseHeader();
@@ -336,12 +493,25 @@ async function initializeAdminCoursePage() {
   }
 }
 
+window.addEventListener("storage", (event) => {
+  if (
+    event.key === "smartStudentEnrollments" ||
+    event.key === "smartStudentAssessmentProgress"
+  ) {
+    renderAssessmentRows();
+  }
+});
+
 if (addAssignmentBtn) {
   addAssignmentBtn.addEventListener("click", addAssessment);
 }
 
 if (editCourseBtn) {
   editCourseBtn.addEventListener("click", toggleEditCourseDetails);
+}
+
+if (saveTemplateBtn) {
+  saveTemplateBtn.addEventListener("click", saveAsReusableTemplate);
 }
 
 if (sortDueDateBtn) {
