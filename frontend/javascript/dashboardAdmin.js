@@ -8,16 +8,72 @@ const closeCreateCourseModal = document.getElementById(
 const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
 
+function closeAllCourseMenus() {
+  document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
+    menu.classList.remove("is-open");
+  });
+}
+
 function createCourseCard(course) {
   const card = document.createElement("div");
   card.className = "course-card";
   card.dataset.courseId = course.id;
-  card.innerHTML = `
-    <h3>${course.code} - ${course.name}</h3>
-    <p><span class="course-label">Prof:</span> ${course.instructorName}</p>
-    <p><span class="course-label">Section:</span> ${course.section}</p>
-    <p><span class="course-label">Credits:</span> ${course.credits}</p>
-  `;
+
+  const actionsButton = document.createElement("button");
+  actionsButton.className = "course-actions-btn";
+  actionsButton.type = "button";
+  actionsButton.setAttribute("aria-label", `Manage ${course.code} ${course.name}`);
+  actionsButton.innerHTML = "<span></span><span></span><span></span>";
+
+  const actionsMenu = document.createElement("div");
+  actionsMenu.className = "course-actions-menu";
+
+  const disableButton = document.createElement("button");
+  disableButton.className = "course-disable-btn";
+  disableButton.type = "button";
+  disableButton.textContent = "Disable course";
+
+  const deleteButton = document.createElement("button");
+  deleteButton.className = "course-delete-btn";
+  deleteButton.type = "button";
+  deleteButton.textContent = "Delete course";
+
+  const title = document.createElement("h3");
+  title.textContent = `${course.code} - ${course.name}`;
+
+  const professor = document.createElement("p");
+  professor.innerHTML = `<span class="course-label">Prof:</span> ${course.instructorName}`;
+
+  const section = document.createElement("p");
+  section.innerHTML = `<span class="course-label">Section:</span> ${course.section}`;
+
+  const credits = document.createElement("p");
+  credits.innerHTML = `<span class="course-label">Credits:</span> ${course.credits}`;
+
+  actionsMenu.append(disableButton, deleteButton);
+  card.append(actionsButton, actionsMenu, title, professor, section, credits);
+
+  actionsButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
+      if (menu !== actionsMenu) {
+        menu.classList.remove("is-open");
+      }
+    });
+
+    actionsMenu.classList.toggle("is-open");
+  });
+
+  disableButton.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    await disableCourse(course.id);
+  });
+
+  deleteButton.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    await deleteCourse(course.id);
+  });
 
   return card;
 }
@@ -90,6 +146,57 @@ async function loadCourses() {
     instructorName: course.instructor_name,
     credits: course.credits,
   }));
+}
+
+async function disableCourse(courseId) {
+  const confirmed = window.confirm(
+    "Disable this course? It will appear on the Disabled Courses page.",
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  closeAllCourseMenus();
+
+  const { error } = await supabaseClient
+    .from("available_courses")
+    .update({
+      is_enabled: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("course_offering_id", courseId);
+
+  if (error) {
+    alert(error.message || "Failed to disable course.");
+    return;
+  }
+
+  await renderCourses();
+}
+
+async function deleteCourse(courseId) {
+  const confirmed = window.confirm(
+    "Delete this course permanently? This cannot be undone.",
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  closeAllCourseMenus();
+
+  const { error } = await supabaseClient
+    .from("available_courses")
+    .delete()
+    .eq("course_offering_id", courseId);
+
+  if (error) {
+    alert(error.message || "Failed to delete course.");
+    return;
+  }
+
+  await renderCourses();
 }
 
 async function renderCourses() {
@@ -216,5 +323,7 @@ if (createCourseForm && coursesList) {
     }
   });
 }
+
+document.addEventListener("click", closeAllCourseMenus);
 
 renderCourses();
