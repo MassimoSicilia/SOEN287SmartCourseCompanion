@@ -8,6 +8,15 @@ const closeCreateCourseModal = document.getElementById(
 const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
 
+function setSelectedAdminCourse(course) {
+  if (!course) {
+    sessionStorage.removeItem("selectedAdminCourse");
+    return;
+  }
+
+  sessionStorage.setItem("selectedAdminCourse", JSON.stringify(course));
+}
+
 function closeAllCourseMenus() {
   document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
     menu.classList.remove("is-open");
@@ -145,6 +154,7 @@ async function loadCourses() {
     section: course.section,
     instructorName: course.instructor_name,
     credits: course.credits,
+    term: course.term,
   }));
 }
 
@@ -216,7 +226,7 @@ async function renderCourses() {
 
     courses.forEach((course) => {
       const card = createCourseCard(course);
-      addCourseCardClickHandler(card);
+      addCourseCardClickHandler(card, course);
       coursesList.appendChild(card);
     });
   } catch (error) {
@@ -225,13 +235,16 @@ async function renderCourses() {
   }
 }
 
-function addCourseCardClickHandler(card) {
+function addCourseCardClickHandler(card, course) {
   if (!card) {
     return;
   }
 
   card.addEventListener("click", () => {
-    window.location.href = "courseAdmin.html";
+    setSelectedAdminCourse(course);
+    window.location.href = `courseAdmin.html?courseId=${encodeURIComponent(
+      course.id,
+    )}`;
   });
 }
 

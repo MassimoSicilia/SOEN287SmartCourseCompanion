@@ -93,6 +93,11 @@ h1 {
     font-size: 16px;
 }
 
+.empty-assessment-row {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
 .add-assessment-row > div:first-child {
     display: flex;
     align-items: center;
