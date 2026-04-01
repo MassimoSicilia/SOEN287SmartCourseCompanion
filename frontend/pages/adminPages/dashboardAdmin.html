@@ -8,6 +8,11 @@
     <link rel="stylesheet" href="../../css/pages/header.css" />
     <link rel="stylesheet" href="../../css/pages/dashboardAdmin.css" />
     <script src="../../javascript/headerAdmin.js" defer></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+      defer
+    ></script>
+    <script src="../../javascript/supabaseClient.js" defer></script>
     <script src="../../javascript/dashboardAdmin.js" defer></script>
   </head>
   <body>
@@ -28,29 +33,7 @@
           </button>
         </div>
       </div>
-      <div class="courses-list">
-        <div class="course-card">
-          <h3>SOEN 287 - Web Development</h3>
-          <p><span class="course-label">Prof:</span> John Doe</p>
-          <p><span class="course-label">Section:</span> UU</p>
-          <p><span class="course-label">Term:</span> Winter 2026</p>
-          <p><span class="course-label">Credits:</span> 3</p>
-        </div>
-        <div class="course-card">
-          <h3>SOEN 228 - System Hardware</h3>
-          <p><span class="course-label">Prof:</span> Jane Smith</p>
-          <p><span class="course-label">Section:</span> AB</p>
-          <p><span class="course-label">Term:</span> Winter 2026</p>
-          <p><span class="course-label">Credits:</span> 3</p>
-        </div>
-        <div class="course-card">
-          <h3>COMP 352 - Data Structures and Algorithms</h3>
-          <p><span class="course-label">Prof:</span> Mark Lee</p>
-          <p><span class="course-label">Section:</span> CC</p>
-          <p><span class="course-label">Term:</span> Winter 2026</p>
-          <p><span class="course-label">Credits:</span> 3</p>
-        </div>
-      </div>
+      <div class="courses-list"></div>
     </div>
     <!-- modal to create a new course-->
     <div id="create-course-modal" class="modal">
@@ -71,15 +54,16 @@
             name="course-credits"
             required
           />
+          <label for="term">Term:</label>
+          <select id="term" name="term" required>
+            <option value="">Select a term</option>
+            <option value="Winter">Winter 2026</option>
+            <option value="Summer">Summer 2026</option>
+            <option value="Fall">Fall 2026</option>
+          </select>
 
           <label for="section">Section:</label>
           <input type="text" id="section" name="section" required />
-
-          <label for="term">Term:</label>
-          <input type="text" id="term" name="term" required />
-
-          <label for="professor">Professor:</label>
-          <input type="text" id="professor" name="professor" required />
 
           <button type="submit" class="submit-btn">Create Course</button>
         </form>
