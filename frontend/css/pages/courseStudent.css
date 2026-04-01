@@ -94,12 +94,16 @@ h1 {
     font-weight: 600;
 }
 
+.course-status-message:empty {
+    display: none;
+}
+
 .course-status-message.is-error {
     color: #b91c1c;
 }
 
 .assignment-row {
-    margin-top: 12px;
+    margin-top: 8px;
     padding: 14px 16px;
     background: var(--bg-surface);
     border: 1px solid var(--border-soft);
@@ -148,7 +152,7 @@ h1 {
 }
 
 .tab-content {
-    margin-top: 14px;
+    margin-top: 8px;
 }
 
 .button-row {
