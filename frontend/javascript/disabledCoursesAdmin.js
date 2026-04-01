@@ -2,6 +2,7 @@ const supabaseClient = window.supabaseClient;
 const apiClient = window.SmartCourseApi;
 const disabledCoursesList = document.querySelector(".courses-list");
 const DISABLED_ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
+const DISABLED_COURSES_CACHE_KEY = "smartDisabledAdminCourses";
 
 function createEmptyState() {
   const message = document.createElement("p");
@@ -57,22 +58,64 @@ async function loadDisabledCourses() {
   }
 
   const adminProfile = await getCurrentAdminProfile();
-  const response = await apiClient.getCourses({
-    enabled: false,
-    createdByUserId: adminProfile.userId,
-  });
+  if (apiClient) {
+    try {
+      const response = await apiClient.getCourses({
+        enabled: false,
+        createdByUserId: adminProfile.userId,
+      });
 
-  return (response?.courses || [])
-    .filter((course) => !course.isEnabled)
-    .map((course) => ({
-      id: course.courseOfferingId,
-      code: course.courseCode,
-      name: course.courseName,
-      professor: course.instructorName,
-      section: course.section,
-      term: course.term,
-      credits: course.credits,
-    }));
+      const courses = (response?.courses || [])
+        .filter((course) => !course.isEnabled)
+        .map((course) => ({
+          id: course.courseOfferingId,
+          code: course.courseCode,
+          name: course.courseName,
+          professor: course.instructorName,
+          section: course.section,
+          term: course.term,
+          credits: course.credits,
+        }));
+
+      sessionStorage.setItem(
+        `${DISABLED_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+        JSON.stringify(courses),
+      );
+      return courses;
+    } catch (error) {
+      console.warn("Node API disabled course load failed, falling back to Supabase:", error);
+    }
+  }
+
+  const { data, error } = await supabaseClient
+    .from("available_courses")
+    .select(
+      "course_offering_id, course_code, course_name, section, instructor_name, term, credits, is_enabled, created_by_user_id",
+    )
+    .eq("is_enabled", false)
+    .eq("created_by_user_id", adminProfile.userId)
+    .order("course_code", { ascending: true })
+    .order("section", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  const courses = (data || []).map((course) => ({
+    id: course.course_offering_id,
+    code: course.course_code,
+    name: course.course_name,
+    professor: course.instructor_name,
+    section: course.section,
+    term: course.term,
+    credits: course.credits,
+  }));
+
+  sessionStorage.setItem(
+    `${DISABLED_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+    JSON.stringify(courses),
+  );
+  return courses;
 }
 
 function createCourseCard(course) {
@@ -157,7 +200,29 @@ async function renderDisabledCourses() {
   disabledCoursesList.innerHTML = "";
 
   try {
+    const adminProfile = await getCurrentAdminProfile();
+    const cachedCoursesRaw = sessionStorage.getItem(
+      `${DISABLED_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+    );
+
+    if (cachedCoursesRaw) {
+      try {
+        const cachedCourses = JSON.parse(cachedCoursesRaw);
+        if (Array.isArray(cachedCourses) && cachedCourses.length > 0) {
+          cachedCourses.forEach((course) => {
+            disabledCoursesList.appendChild(createCourseCard(course));
+          });
+        }
+      } catch (error) {
+        sessionStorage.removeItem(
+          `${DISABLED_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+        );
+      }
+    }
+
     const courses = await loadDisabledCourses();
+
+    disabledCoursesList.innerHTML = "";
 
     if (courses.length === 0) {
       disabledCoursesList.appendChild(createEmptyState());

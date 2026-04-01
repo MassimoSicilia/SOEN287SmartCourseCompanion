@@ -271,6 +271,17 @@ function getAllStudentEnrollments() {
   return readJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, {});
 }
 
+function getStudentsEnrolledInCourse(courseId) {
+  const allEnrollments = getAllStudentEnrollments();
+
+  return Object.entries(allEnrollments)
+    .filter(([, courses]) =>
+      Array.isArray(courses) &&
+      courses.some((course) => course.courseOfferingId === courseId),
+    )
+    .map(([userId]) => userId);
+}
+
 function getStudentEnrollments(userId) {
   const enrollments = getAllStudentEnrollments();
   return Array.isArray(enrollments[userId]) ? enrollments[userId] : [];
@@ -282,6 +293,19 @@ function saveStudentEnrollmentsToCache(userId, courses) {
   writeJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, enrollments);
 }
 
+async function syncCachedStudentEnrollmentsToApi(userId, courses) {
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !Array.isArray(courses) || courses.length === 0) {
+    return;
+  }
+
+  await Promise.all(
+    courses
+      .filter((course) => course?.courseOfferingId)
+      .map((course) => apiClient.addStudentEnrollment(userId, course.courseOfferingId)),
+  );
+}
+
 async function loadStudentEnrollments(userId) {
   const apiClient = getApiClient();
   const cachedEnrollments = getStudentEnrollments(userId);
@@ -290,6 +314,7 @@ async function loadStudentEnrollments(userId) {
   }
 
   if (cachedEnrollments.length > 0) {
+    void syncCachedStudentEnrollmentsToApi(userId, cachedEnrollments);
     return cachedEnrollments;
   }
 
@@ -382,6 +407,19 @@ function saveStudentCourseProgressToCache(userId, courseId, progressByAssessment
   writeJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, allProgress);
 }
 
+async function syncCachedStudentCourseProgressToApi(
+  userId,
+  courseId,
+  progressByAssessmentId,
+) {
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !courseId || !progressByAssessmentId) {
+    return;
+  }
+
+  await apiClient.saveStudentCourseProgress(userId, courseId, progressByAssessmentId);
+}
+
 async function loadStudentCourseProgress(userId, courseId) {
   const apiClient = getApiClient();
   const cachedProgress = getStudentCourseProgress(userId, courseId);
@@ -390,6 +428,7 @@ async function loadStudentCourseProgress(userId, courseId) {
   }
 
   if (Object.keys(cachedProgress).length > 0) {
+    void syncCachedStudentCourseProgressToApi(userId, courseId, cachedProgress);
     return cachedProgress;
   }
 
@@ -461,10 +500,6 @@ async function loadCourseSubmissionSummaries(courseId) {
     return cachedSummary;
   }
 
-  if (Object.keys(cachedSummary).length > 0) {
-    return cachedSummary;
-  }
-
   try {
     const response = await apiClient.getCourseSubmissionSummary(courseId);
     const summaryByAssessmentId = response?.summaryByAssessmentId || {};
@@ -478,14 +513,29 @@ async function loadCourseSubmissionSummaries(courseId) {
 
 function getAssessmentSubmissionSummary(courseId, assessmentId) {
   const summaries = getAllCourseSubmissionSummaries();
-  return (
-    summaries[courseId]?.[assessmentId] || {
-      submittedCount: 0,
-      totalCount: 0,
-      completionStatusText: "0/0",
-      completionRateText: "--",
-    }
-  );
+  const cachedSummary = summaries[courseId]?.[assessmentId];
+  if (cachedSummary) {
+    return cachedSummary;
+  }
+
+  const enrolledStudentIds = getStudentsEnrolledInCourse(courseId);
+  const allProgress = getAllStudentProgress();
+
+  const submittedCount = enrolledStudentIds.reduce((count, userId) => {
+    const assessmentProgress = allProgress[userId]?.[courseId]?.[assessmentId];
+    return assessmentProgress?.status === "Submitted" ? count + 1 : count;
+  }, 0);
+
+  const totalCount = enrolledStudentIds.length;
+  const completionRate =
+    totalCount > 0 ? ((submittedCount / totalCount) * 100).toFixed(2) : "--";
+
+  return {
+    submittedCount,
+    totalCount,
+    completionStatusText: `${submittedCount}/${totalCount}`,
+    completionRateText: totalCount > 0 ? `${completionRate}%` : "--",
+  };
 }
 
 window.CourseDataStore = {
