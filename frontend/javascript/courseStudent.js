@@ -8,6 +8,7 @@ const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const courseTitle = document.getElementById("course-title");
 const courseStatusMessage = document.getElementById("courseStatusMessage");
 const STATUS_OPTIONS = ["Not started", "In progress", "Submitted"];
+const COURSE_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
 
 const studentCourseState = {
   currentUser: null,
@@ -45,7 +46,31 @@ function getSelectedStudentCourse() {
   }
 }
 
+function getPendingSelectedCourse() {
+  const selectedCourse = getSelectedStudentCourse();
+  const courseId = getCourseIdFromQuery();
+
+  if (!selectedCourse) {
+    return null;
+  }
+
+  if (courseId && selectedCourse.courseOfferingId !== courseId) {
+    return null;
+  }
+
+  return selectedCourse;
+}
+
 async function getCurrentUser() {
+  const cachedUser = sessionStorage.getItem(COURSE_STUDENT_USER_CACHE_KEY);
+  if (cachedUser) {
+    try {
+      return JSON.parse(cachedUser);
+    } catch (error) {
+      sessionStorage.removeItem(COURSE_STUDENT_USER_CACHE_KEY);
+    }
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -64,6 +89,7 @@ async function getCurrentUser() {
     return null;
   }
 
+  sessionStorage.setItem(COURSE_STUDENT_USER_CACHE_KEY, JSON.stringify(user));
   return user;
 }
 
@@ -129,7 +155,7 @@ function persistAssessmentProgress(assessmentId, nextProgress) {
     status: String(nextProgress.status || "Not started").trim() || "Not started",
   };
 
-  courseDataStore.saveStudentCourseProgress(
+  void courseDataStore.saveStudentCourseProgress(
     studentCourseState.currentUser.id,
     studentCourseState.course.courseOfferingId,
     studentCourseState.progressByAssessmentId,
@@ -297,8 +323,8 @@ function setActiveTab(showCompleted) {
   completedBtn.classList.toggle("active", showCompleted);
 }
 
-function loadSelectedCourse() {
-  const selectedCourse = getSelectedStudentCourse();
+async function loadSelectedCourse() {
+  const selectedCourse = getPendingSelectedCourse();
   const courseId = getCourseIdFromQuery();
 
   if (selectedCourse && (!courseId || selectedCourse.courseOfferingId === courseId)) {
@@ -309,7 +335,18 @@ function loadSelectedCourse() {
     return null;
   }
 
-  const enrolledCourses = courseDataStore.getStudentEnrollments(
+  const cachedEnrollments = courseDataStore.getStudentEnrollments(
+    studentCourseState.currentUser.id,
+  );
+  const cachedCourse = cachedEnrollments.find(
+    (course) => course.courseOfferingId === courseId,
+  );
+
+  if (cachedCourse) {
+    return cachedCourse;
+  }
+
+  const enrolledCourses = await courseDataStore.loadStudentEnrollments(
     studentCourseState.currentUser.id,
   );
 
@@ -325,6 +362,16 @@ function applyCourseHeader() {
 
   courseTitle.textContent = studentCourseState.course.courseCode;
   document.title = `Smart Course Companion | ${studentCourseState.course.courseCode}`;
+}
+
+function applyPendingCourseHeader() {
+  const pendingCourse = getPendingSelectedCourse();
+  if (!pendingCourse) {
+    return;
+  }
+
+  studentCourseState.course = pendingCourse;
+  applyCourseHeader();
 }
 
 function handleInProgressInput(event) {
@@ -444,12 +491,18 @@ function handleCompletedContentClick(event) {
 
 async function initializeStudentCoursePage() {
   try {
+    applyPendingCourseHeader();
+    setStatusMessage("Loading course...");
+
     studentCourseState.currentUser = await getCurrentUser();
     if (!studentCourseState.currentUser) {
       return;
     }
 
-    studentCourseState.course = loadSelectedCourse();
+    if (!studentCourseState.course) {
+      studentCourseState.course = await loadSelectedCourse();
+    }
+
     if (!studentCourseState.course) {
       throw new Error("Open this page from a course on your dashboard.");
     }
@@ -459,19 +512,25 @@ async function initializeStudentCoursePage() {
       JSON.stringify(studentCourseState.course),
     );
 
-    const template = await courseDataStore.loadCourseTemplate(
-      studentCourseState.course.courseOfferingId,
-    );
+    applyCourseHeader();
+    setActiveTab(false);
 
-    studentCourseState.assessments = template.assessments;
     studentCourseState.progressByAssessmentId = courseDataStore.getStudentCourseProgress(
       studentCourseState.currentUser.id,
       studentCourseState.course.courseOfferingId,
     );
 
-    applyCourseHeader();
+    const templatePromise = courseDataStore.loadCourseTemplate(
+      studentCourseState.course.courseOfferingId,
+    );
+    const progressPromise = courseDataStore.loadStudentCourseProgress(
+      studentCourseState.currentUser.id,
+      studentCourseState.course.courseOfferingId,
+    );
+
+    const template = await templatePromise;
+    studentCourseState.assessments = template.assessments;
     renderAssessments();
-    setActiveTab(false);
 
     if (studentCourseState.assessments.length === 0) {
       setStatusMessage(
@@ -479,6 +538,10 @@ async function initializeStudentCoursePage() {
       );
       return;
     }
+
+    const progressByAssessmentId = await progressPromise;
+    studentCourseState.progressByAssessmentId = progressByAssessmentId;
+    renderAssessments();
 
     setStatusMessage("");
   } catch (error) {

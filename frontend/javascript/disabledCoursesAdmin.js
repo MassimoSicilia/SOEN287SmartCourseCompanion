@@ -1,5 +1,7 @@
 const supabaseClient = window.supabaseClient;
+const apiClient = window.SmartCourseApi;
 const disabledCoursesList = document.querySelector(".courses-list");
+const DISABLED_ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
 
 function createEmptyState() {
   const message = document.createElement("p");
@@ -15,6 +17,15 @@ function closeAllCourseMenus() {
 }
 
 async function getCurrentAdminProfile() {
+  const cachedProfile = sessionStorage.getItem(DISABLED_ADMIN_PROFILE_CACHE_KEY);
+  if (cachedProfile) {
+    try {
+      return JSON.parse(cachedProfile);
+    } catch (error) {
+      sessionStorage.removeItem(DISABLED_ADMIN_PROFILE_CACHE_KEY);
+    }
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -32,37 +43,36 @@ async function getCurrentAdminProfile() {
     throw new Error("You must be logged in to view disabled courses.");
   }
 
-  return {
+  const profile = {
     userId: user.id,
   };
+
+  sessionStorage.setItem(DISABLED_ADMIN_PROFILE_CACHE_KEY, JSON.stringify(profile));
+  return profile;
 }
 
 async function loadDisabledCourses() {
-  const adminProfile = await getCurrentAdminProfile();
-
-  const { data, error } = await supabaseClient
-    .from("available_courses")
-    .select(
-      "course_offering_id, course_code, course_name, section, instructor_name, term, credits, is_enabled, created_by_user_id",
-    )
-    .eq("is_enabled", false)
-    .eq("created_by_user_id", adminProfile.userId)
-    .order("course_code", { ascending: true })
-    .order("section", { ascending: true });
-
-  if (error) {
-    throw error;
+  if (!apiClient) {
+    throw new Error("Node API client is not loaded.");
   }
 
-  return (data || []).map((course) => ({
-    id: course.course_offering_id,
-    code: course.course_code,
-    name: course.course_name,
-    professor: course.instructor_name,
-    section: course.section,
-    term: course.term,
-    credits: course.credits,
-  }));
+  const adminProfile = await getCurrentAdminProfile();
+  const response = await apiClient.getCourses({
+    enabled: false,
+    createdByUserId: adminProfile.userId,
+  });
+
+  return (response?.courses || [])
+    .filter((course) => !course.isEnabled)
+    .map((course) => ({
+      id: course.courseOfferingId,
+      code: course.courseCode,
+      name: course.courseName,
+      professor: course.instructorName,
+      section: course.section,
+      term: course.term,
+      credits: course.credits,
+    }));
 }
 
 function createCourseCard(course) {
@@ -127,15 +137,11 @@ function createCourseCard(course) {
 async function enableCourse(courseId) {
   closeAllCourseMenus();
 
-  const { error } = await supabaseClient
-    .from("available_courses")
-    .update({
-      is_enabled: true,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("course_offering_id", courseId);
-
-  if (error) {
+  try {
+    await apiClient.updateCourse(courseId, {
+      isEnabled: true,
+    });
+  } catch (error) {
     alert(error.message || "Failed to enable course.");
     return;
   }

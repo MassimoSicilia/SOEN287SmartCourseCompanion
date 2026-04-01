@@ -1,5 +1,6 @@
 const supabaseClient = window.supabaseClient;
 const courseDataStore = window.CourseDataStore;
+const apiClient = window.SmartCourseApi;
 const addCourseButton = document.getElementById("add-course-btn");
 const addCourseModal = document.getElementById("addCourseModal");
 const closeAddCourseModal = document.getElementById("closeAddCourseModal");
@@ -9,6 +10,9 @@ const courseOfferingSelect = document.getElementById("courseOfferingSelect");
 const selectedCoursePreview = document.getElementById("selected-course-preview");
 const coursesStatusMessage = document.getElementById("courses-status-message");
 const upcomingAssignmentsList = document.getElementById("upcomingAssignmentsList");
+const DASHBOARD_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
+const ENABLED_STUDENT_COURSES_CACHE_KEY = "smartEnabledStudentCourses";
+const UPCOMING_ASSIGNMENTS_CACHE_KEY = "smartUpcomingAssignments";
 
 const dashboardState = {
   currentUser: null,
@@ -16,6 +20,53 @@ const dashboardState = {
   enrolledCourses: [],
   upcomingAssignments: [],
 };
+
+function getCachedEnabledCourses() {
+  const rawValue = sessionStorage.getItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    sessionStorage.removeItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+    return [];
+  }
+}
+
+function getUpcomingAssignmentsCacheKey(userId) {
+  return `${UPCOMING_ASSIGNMENTS_CACHE_KEY}:${userId}`;
+}
+
+function getCachedUpcomingAssignments(userId) {
+  if (!userId) {
+    return [];
+  }
+
+  const rawValue = sessionStorage.getItem(getUpcomingAssignmentsCacheKey(userId));
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    sessionStorage.removeItem(getUpcomingAssignmentsCacheKey(userId));
+    return [];
+  }
+}
+
+function saveCachedUpcomingAssignments(userId, assignments) {
+  if (!userId) {
+    return;
+  }
+
+  sessionStorage.setItem(
+    getUpcomingAssignmentsCacheKey(userId),
+    JSON.stringify(Array.isArray(assignments) ? assignments : []),
+  );
+}
 
 function closeAllCourseMenus() {
   document.querySelectorAll(".course-actions-menu.is-open").forEach((menu) => {
@@ -230,9 +281,20 @@ function createCourseCard(course) {
     actionsMenu.classList.toggle("is-open");
   });
 
-  deleteButton.addEventListener("click", (event) => {
+  deleteButton.addEventListener("click", async (event) => {
     event.stopPropagation();
-    removeEnrollment(course.courseOfferingId);
+    await removeEnrollment(course.courseOfferingId);
+  });
+
+  card.addEventListener("mouseenter", () => {
+    if (!dashboardState.currentUser || !courseDataStore) {
+      return;
+    }
+
+    void courseDataStore.prefetchCourseData(
+      dashboardState.currentUser.id,
+      course.courseOfferingId,
+    );
   });
 
   card.addEventListener("click", () => {
@@ -264,7 +326,29 @@ function renderCourses() {
   });
 }
 
+function prefetchVisibleCourseData() {
+  if (!dashboardState.currentUser || !courseDataStore) {
+    return;
+  }
+
+  dashboardState.enrolledCourses.forEach((course) => {
+    void courseDataStore.prefetchCourseData(
+      dashboardState.currentUser.id,
+      course.courseOfferingId,
+    );
+  });
+}
+
 async function getCurrentUser() {
+  const cachedUser = sessionStorage.getItem(DASHBOARD_STUDENT_USER_CACHE_KEY);
+  if (cachedUser) {
+    try {
+      return JSON.parse(cachedUser);
+    } catch (error) {
+      sessionStorage.removeItem(DASHBOARD_STUDENT_USER_CACHE_KEY);
+    }
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -283,10 +367,41 @@ async function getCurrentUser() {
     return null;
   }
 
+  sessionStorage.setItem(DASHBOARD_STUDENT_USER_CACHE_KEY, JSON.stringify(user));
   return user;
 }
 
 async function loadAvailableCourses() {
+  if (apiClient) {
+    try {
+      const response = await apiClient.getCourses({
+        enabled: true,
+      });
+
+      dashboardState.allCourses = (response?.courses || []).map((course) => ({
+        courseOfferingId: course.courseOfferingId,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        section: course.section,
+        instructorName: course.instructorName,
+        credits: course.credits,
+        term: course.term,
+        isEnabled: course.isEnabled,
+      }));
+      sessionStorage.setItem(
+        ENABLED_STUDENT_COURSES_CACHE_KEY,
+        JSON.stringify(dashboardState.allCourses),
+      );
+      return;
+    } catch (error) {
+      console.warn("Node API course load failed, falling back to Supabase:", error);
+    }
+  }
+
+  if (!supabaseClient) {
+    throw new Error("Neither the Node API nor Supabase client is available.");
+  }
+
   const { data, error } = await supabaseClient
     .from("available_courses")
     .select(
@@ -310,14 +425,18 @@ async function loadAvailableCourses() {
     term: course.term,
     isEnabled: course.is_enabled,
   }));
+  sessionStorage.setItem(
+    ENABLED_STUDENT_COURSES_CACHE_KEY,
+    JSON.stringify(dashboardState.allCourses),
+  );
 }
 
-function loadSavedEnrollments() {
+async function loadSavedEnrollments() {
   if (!dashboardState.currentUser || !courseDataStore) {
     return;
   }
 
-  const savedCourses = courseDataStore.getStudentEnrollments(
+  const savedCourses = await courseDataStore.loadStudentEnrollments(
     dashboardState.currentUser.id,
   );
   const availableCourseMap = new Map(
@@ -366,6 +485,19 @@ function formatDashboardDueDate(value) {
   });
 }
 
+function isFutureAssessmentDate(value) {
+  const parsedDate = parseDashboardDate(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  parsedDate.setHours(0, 0, 0, 0);
+
+  return parsedDate.getTime() > today.getTime();
+}
+
 function getDashboardStatusPresentation(status) {
   if (status === "Submitted") {
     return {
@@ -398,24 +530,28 @@ async function loadUpcomingAssignments() {
       const template = await courseDataStore.loadCourseTemplate(
         course.courseOfferingId,
       );
+      const progressByAssessmentId = await courseDataStore.loadStudentCourseProgress(
+        dashboardState.currentUser.id,
+        course.courseOfferingId,
+      );
 
       return {
         course,
         assessments: template.assessments,
+        progressByAssessmentId,
       };
     }),
   );
 
   const nextAssignments = [];
 
-  templates.forEach(({ course, assessments }) => {
-    const courseProgress = courseDataStore.getStudentCourseProgress(
-      dashboardState.currentUser.id,
-      course.courseOfferingId,
-    );
-
+  templates.forEach(({ course, assessments, progressByAssessmentId }) => {
     assessments.forEach((assessment) => {
-      const progress = courseProgress[assessment.id] || {
+      if (!isFutureAssessmentDate(assessment.dueDate)) {
+        return;
+      }
+
+      const progress = progressByAssessmentId[assessment.id] || {
         grade: "",
         status: "Not started",
       };
@@ -451,18 +587,53 @@ async function loadUpcomingAssignments() {
   });
 
   dashboardState.upcomingAssignments = nextAssignments.slice(0, 3);
+  saveCachedUpcomingAssignments(
+    dashboardState.currentUser.id,
+    dashboardState.upcomingAssignments,
+  );
 }
 
 async function refreshDashboard() {
   setStatusMessage("Loading your courses...");
 
   try {
+    const cachedEnabledCourses = getCachedEnabledCourses();
+    const cachedEnrollments = courseDataStore.getStudentEnrollments(
+      dashboardState.currentUser.id,
+    );
+
+    if (cachedEnabledCourses.length > 0) {
+      dashboardState.allCourses = cachedEnabledCourses;
+      if (cachedEnrollments.length > 0) {
+        const availableCourseMap = new Map(
+          dashboardState.allCourses.map((course) => [course.courseOfferingId, course]),
+        );
+
+        dashboardState.enrolledCourses = cachedEnrollments
+          .map((savedCourse) => {
+            return availableCourseMap.get(savedCourse.courseOfferingId) || null;
+          })
+          .filter(Boolean);
+      } else {
+        dashboardState.enrolledCourses = [];
+      }
+
+      dashboardState.upcomingAssignments = getCachedUpcomingAssignments(
+        dashboardState.currentUser.id,
+      );
+
+      renderCourses();
+      renderCourseOptions();
+      renderUpcomingAssignments();
+    }
+
     await loadAvailableCourses();
-    loadSavedEnrollments();
+    await loadSavedEnrollments();
     await loadUpcomingAssignments();
     renderCourses();
     renderUpcomingAssignments();
     renderCourseOptions();
+    prefetchVisibleCourseData();
 
     if (dashboardState.enrolledCourses.length > 0) {
       setStatusMessage("");
@@ -487,7 +658,7 @@ async function refreshDashboard() {
   }
 }
 
-function addEnrollment(courseOfferingId) {
+async function addEnrollment(courseOfferingId) {
   if (!dashboardState.currentUser || !courseDataStore) {
     throw new Error("You must be logged in to enroll in a course.");
   }
@@ -500,26 +671,26 @@ function addEnrollment(courseOfferingId) {
     throw new Error("The selected course could not be found.");
   }
 
-  courseDataStore.upsertStudentEnrollment(
+  await courseDataStore.upsertStudentEnrollment(
     dashboardState.currentUser.id,
     selectedCourse,
   );
 }
 
-function removeEnrollment(courseOfferingId) {
+async function removeEnrollment(courseOfferingId) {
   if (!dashboardState.currentUser || !courseDataStore) {
     return;
   }
 
-  courseDataStore.removeStudentEnrollment(
+  await courseDataStore.removeStudentEnrollment(
     dashboardState.currentUser.id,
     courseOfferingId,
   );
-  courseDataStore.removeStudentCourseProgress(
+  await courseDataStore.removeStudentCourseProgress(
     dashboardState.currentUser.id,
     courseOfferingId,
   );
-  refreshDashboard();
+  await refreshDashboard();
 }
 
 async function initializeDashboard() {
@@ -573,7 +744,7 @@ if (addCourseForm) {
 
     try {
       setStatusMessage("Adding course...");
-      addEnrollment(selectedCourseId);
+      await addEnrollment(selectedCourseId);
       addCourseForm.reset();
       closeModal();
       await refreshDashboard();

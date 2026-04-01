@@ -6,7 +6,7 @@
 - Git
 - Optional: VS Code + Live Server extension
 
-Note: The current project in this repository runs as a static frontend (`HTML/CSS/JS`). No backend setup is required to run the UI locally.
+Note: The project now uses a Node.js backend for the main course, template, enrollment, and progress data flows. Run the API before opening the frontend.
 
 ## 2. Clone the Repository
 
@@ -16,6 +16,28 @@ cd SOEN287SmartCourseCompanion
 ```
 
 ## 3. Run the Project Locally
+
+Node.js backend
+
+1. Open a terminal in `node/`.
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Create a `.env` file in `node/` with your database connection string:
+
+```env
+DATABASE_URL=your_postgres_connection_string
+PORT=3000
+```
+
+4. Start the API:
+
+```bash
+npm start
+```
 
 VS Code + Live Server (recommended)
 
@@ -28,9 +50,8 @@ VS Code + Live Server (recommended)
 
 ## 4. Basic Usage Notes
 
-- Sign up creates accounts in browser `localStorage`.
-- Login authenticates against those stored accounts.
-- Data is local to your browser profile on your machine.
+- Authentication still uses Supabase on the frontend.
+- Main app data now flows through the Node.js API.
 
 ## 5. Reset Local Data (if needed)
 
