@@ -1,7 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 
-//users table
+//users table 
 CREATE TABLE IF NOT EXISTS public.users (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   first_name VARCHAR(100) NOT NULL,
@@ -30,6 +30,7 @@ WHERE first_name IS NULL
 ALTER TABLE public.users ALTER COLUMN first_name SET NOT NULL;
 ALTER TABLE public.users ALTER COLUMN last_name SET NOT NULL;
 
+//student_profiles table
 CREATE TABLE IF NOT EXISTS public.student_profiles (
   student_profile_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL UNIQUE REFERENCES public.users(user_id) ON DELETE CASCADE,
@@ -220,3 +221,95 @@ CREATE POLICY "students can insert own profile details"
 
 CREATE INDEX IF NOT EXISTS idx_student_profiles_user_id
   ON public.student_profiles(user_id);
+
+//available_courses table
+CREATE TABLE IF NOT EXISTS public.available_courses (
+  course_offering_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  course_code VARCHAR(20) NOT NULL,
+  course_name VARCHAR(255) NOT NULL,
+  section VARCHAR(20) NOT NULL,
+  instructor_name VARCHAR(255) NOT NULL,
+  credits INT NOT NULL CHECK (credits > 0),
+  term VARCHAR(50) NOT NULL,
+  created_by_user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.available_courses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admins can read own available courses" ON public.available_courses;
+CREATE POLICY "admins can read own available courses"
+  ON public.available_courses
+  FOR SELECT
+  TO authenticated
+  USING (
+    created_by_user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM public.users
+      WHERE user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "admins can insert own available courses" ON public.available_courses;
+CREATE POLICY "admins can insert own available courses"
+  ON public.available_courses
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    created_by_user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM public.users
+      WHERE user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "admins can update own available courses" ON public.available_courses;
+CREATE POLICY "admins can update own available courses"
+  ON public.available_courses
+  FOR UPDATE
+  TO authenticated
+  USING (
+    created_by_user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM public.users
+      WHERE user_id = auth.uid()
+        AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    created_by_user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM public.users
+      WHERE user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+DROP POLICY IF EXISTS "admins can delete own available courses" ON public.available_courses;
+CREATE POLICY "admins can delete own available courses"
+  ON public.available_courses
+  FOR DELETE
+  TO authenticated
+  USING (
+    created_by_user_id = auth.uid()
+    AND EXISTS (
+      SELECT 1
+      FROM public.users
+      WHERE user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+CREATE INDEX IF NOT EXISTS idx_available_courses_created_by_user_id
+  ON public.available_courses(created_by_user_id);
+
+CREATE INDEX IF NOT EXISTS idx_available_courses_is_enabled
+  ON public.available_courses(is_enabled);
