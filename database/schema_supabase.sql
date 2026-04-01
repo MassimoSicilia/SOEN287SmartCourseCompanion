@@ -314,29 +314,27 @@ CREATE INDEX IF NOT EXISTS idx_available_courses_created_by_user_id
 CREATE INDEX IF NOT EXISTS idx_available_courses_is_enabled
   ON public.available_courses(is_enabled);
 
-CREATE TABLE IF NOT EXISTS public.course_assessments (
-  assessment_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  course_offering_id UUID NOT NULL REFERENCES public.available_courses(course_offering_id) ON DELETE CASCADE,
-  assessment_name VARCHAR(255) NOT NULL,
-  weight_percent VARCHAR(20) NOT NULL,
-  due_date DATE NOT NULL,
-  display_order INT NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+ALTER TABLE public.assessments
+  DROP CONSTRAINT IF EXISTS assessments_course_offering_id_fkey;
 
-ALTER TABLE public.course_assessments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assessments
+  ADD CONSTRAINT assessments_course_offering_id_fkey
+  FOREIGN KEY (course_offering_id)
+  REFERENCES public.available_courses(course_offering_id)
+  ON DELETE CASCADE;
 
-DROP POLICY IF EXISTS "authenticated users can read course assessments" ON public.course_assessments;
-CREATE POLICY "authenticated users can read course assessments"
-  ON public.course_assessments
+ALTER TABLE public.assessments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "authenticated users can read assessments" ON public.assessments;
+CREATE POLICY "authenticated users can read assessments"
+  ON public.assessments
   FOR SELECT
   TO authenticated
   USING (TRUE);
 
-DROP POLICY IF EXISTS "admins can manage own course assessments" ON public.course_assessments;
+DROP POLICY IF EXISTS "admins can manage own course assessments" ON public.assessments;
 CREATE POLICY "admins can manage own course assessments"
-  ON public.course_assessments
+  ON public.assessments
   FOR ALL
   TO authenticated
   USING (
@@ -345,7 +343,7 @@ CREATE POLICY "admins can manage own course assessments"
       FROM public.available_courses ac
       JOIN public.users u
         ON u.user_id = auth.uid()
-      WHERE ac.course_offering_id = course_assessments.course_offering_id
+      WHERE ac.course_offering_id = assessments.course_offering_id
         AND ac.created_by_user_id = auth.uid()
         AND u.role = 'admin'
     )
@@ -356,11 +354,8 @@ CREATE POLICY "admins can manage own course assessments"
       FROM public.available_courses ac
       JOIN public.users u
         ON u.user_id = auth.uid()
-      WHERE ac.course_offering_id = course_assessments.course_offering_id
+      WHERE ac.course_offering_id = assessments.course_offering_id
         AND ac.created_by_user_id = auth.uid()
         AND u.role = 'admin'
     )
   );
-
-CREATE INDEX IF NOT EXISTS idx_course_assessments_course_offering_id
-  ON public.course_assessments(course_offering_id);

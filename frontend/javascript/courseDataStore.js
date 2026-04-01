@@ -22,17 +22,48 @@ function writeJsonStorage(storageKey, value) {
 }
 
 function createAssessmentId() {
-  return `assessment-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const randomValue = Math.floor(Math.random() * 16);
+    const nextValue = char === "x" ? randomValue : (randomValue & 0x3) | 0x8;
+    return nextValue.toString(16);
+  });
+}
+
+function normalizeDateOnly(value) {
+  const trimmedValue = String(value || "").trim();
+  const dateOnlyMatch = trimmedValue.match(/^(\d{4}-\d{2}-\d{2})/);
+  return dateOnlyMatch ? dateOnlyMatch[1] : trimmedValue;
+}
+
+function normalizeWeightValue(value) {
+  const rawValue = String(value ?? "").trim();
+  if (!rawValue) {
+    return "";
+  }
+
+  return rawValue.endsWith("%") ? rawValue : `${rawValue}%`;
+}
+
+function parseWeightNumber(value) {
+  const rawValue = String(value ?? "").replace("%", "").trim();
+  const numericValue = Number(rawValue);
+  return Number.isFinite(numericValue) ? numericValue : null;
 }
 
 function normalizeAssessment(assessment) {
   return {
     id: assessment?.id || assessment?.assessment_id || createAssessmentId(),
-    name: String(assessment?.name || assessment?.assessment_name || "").trim(),
-    weight: String(
-      assessment?.weight ?? assessment?.weight_percent ?? "",
+    name: String(
+      assessment?.name || assessment?.assessment_name || assessment?.title || "",
     ).trim(),
-    dueDate: String(assessment?.dueDate || assessment?.due_date || "").trim(),
+    weight: normalizeWeightValue(
+      assessment?.weight ?? assessment?.weight_percent ?? "",
+    ),
+    dueDate: normalizeDateOnly(assessment?.dueDate || assessment?.due_date || ""),
   };
 }
 
@@ -83,12 +114,12 @@ async function loadCourseTemplate(courseId) {
 
   try {
     const { data, error } = await supabaseClient
-      .from("course_assessments")
+      .from("assessments")
       .select(
-        "assessment_id, assessment_name, weight_percent, due_date, display_order",
+        "assessment_id, title, weight_percent, due_date, is_published",
       )
       .eq("course_offering_id", courseId)
-      .order("display_order", { ascending: true })
+      .eq("is_published", true)
       .order("due_date", { ascending: true });
 
     if (error) {
@@ -122,7 +153,7 @@ async function saveCourseTemplateToDatabase(courseId, assessments) {
     : [];
 
   const { error: deleteError } = await supabaseClient
-    .from("course_assessments")
+    .from("assessments")
     .delete()
     .eq("course_offering_id", courseId);
 
@@ -134,17 +165,17 @@ async function saveCourseTemplateToDatabase(courseId, assessments) {
     return;
   }
 
-  const rows = normalizedAssessments.map((assessment, index) => ({
+  const rows = normalizedAssessments.map((assessment) => ({
     assessment_id: assessment.id,
     course_offering_id: courseId,
-    assessment_name: assessment.name,
-    weight_percent: assessment.weight,
+    title: assessment.name,
+    weight_percent: parseWeightNumber(assessment.weight),
     due_date: assessment.dueDate,
-    display_order: index + 1,
+    is_published: true,
   }));
 
   const { error: insertError } = await supabaseClient
-    .from("course_assessments")
+    .from("assessments")
     .insert(rows);
 
   if (insertError) {
@@ -154,16 +185,22 @@ async function saveCourseTemplateToDatabase(courseId, assessments) {
 
 async function saveCourseTemplateEverywhere(courseId, assessments) {
   saveCourseTemplate(courseId, assessments);
-
-  try {
-    await saveCourseTemplateToDatabase(courseId, assessments);
-  } catch (error) {
-    console.error("Unable to save course template to database:", error);
-  }
+  await saveCourseTemplateToDatabase(courseId, assessments);
 }
 
 function getAllStudentEnrollments() {
   return readJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, {});
+}
+
+function getStudentsEnrolledInCourse(courseId) {
+  const allEnrollments = getAllStudentEnrollments();
+
+  return Object.entries(allEnrollments)
+    .filter(([, courses]) =>
+      Array.isArray(courses) &&
+      courses.some((course) => course.courseOfferingId === courseId),
+    )
+    .map(([userId]) => userId);
 }
 
 function getStudentEnrollments(userId) {
@@ -235,6 +272,28 @@ function removeStudentCourseProgress(userId, courseId) {
   writeJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, allProgress);
 }
 
+function getAssessmentSubmissionSummary(courseId, assessmentId) {
+  const enrolledStudentIds = getStudentsEnrolledInCourse(courseId);
+  const allProgress = getAllStudentProgress();
+
+  const submittedCount = enrolledStudentIds.reduce((count, userId) => {
+    const assessmentProgress = allProgress[userId]?.[courseId]?.[assessmentId];
+    return assessmentProgress?.status === "Submitted" ? count + 1 : count;
+  }, 0);
+
+  const totalCount = enrolledStudentIds.length;
+  const completionRate =
+    totalCount > 0 ? ((submittedCount / totalCount) * 100).toFixed(2) : "--";
+
+  return {
+    submittedCount,
+    totalCount,
+    completionStatusText: `${submittedCount}/${totalCount}`,
+    completionRateText:
+      totalCount > 0 ? `${completionRate}%` : "--",
+  };
+}
+
 window.CourseDataStore = {
   createAssessmentId,
   getCourseTemplate,
@@ -248,4 +307,5 @@ window.CourseDataStore = {
   updateStudentAssessmentProgress,
   saveStudentCourseProgress,
   removeStudentCourseProgress,
+  getAssessmentSubmissionSummary,
 };

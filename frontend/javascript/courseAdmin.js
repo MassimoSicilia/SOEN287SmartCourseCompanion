@@ -104,6 +104,10 @@ function createEmptyRow() {
 }
 
 function createDisplayRow(assessment) {
+  const submissionSummary = courseDataStore.getAssessmentSubmissionSummary(
+    adminCourseState.course?.id,
+    assessment.id,
+  );
   const row = document.createElement("div");
   row.className = "assignment-row";
   row.dataset.assessmentId = assessment.id;
@@ -111,8 +115,8 @@ function createDisplayRow(assessment) {
     createCell(assessment.name),
     createCell(assessment.weight),
     createCell(assessment.dueDate),
-    createCell(""),
-    createCell("--"),
+    createCell(submissionSummary.completionStatusText),
+    createCell(submissionSummary.completionRateText),
   );
   return row;
 }
@@ -327,6 +331,10 @@ async function toggleEditCourseDetails() {
     renderAssessmentRows();
   } catch (error) {
     console.error("Unable to save course template:", error);
+    adminCourseState.isEditMode = true;
+    updateEditButtonLabel();
+    renderAssessmentRows();
+    alert(error.message || "Unable to save this course template.");
   }
 }
 
@@ -353,6 +361,7 @@ async function sortAssessmentsByDueDate() {
     try {
       adminCourseState.assessments = collectAssessmentsFromInputs();
     } catch (error) {
+      alert(error.message || "Unable to sort assessments until the current rows are valid.");
       return;
     }
   }
@@ -361,8 +370,13 @@ async function sortAssessmentsByDueDate() {
     return parseDueDateValue(left.dueDate) - parseDueDateValue(right.dueDate);
   });
 
-  await persistTemplate();
-  renderAssessmentRows();
+  try {
+    await persistTemplate();
+    renderAssessmentRows();
+  } catch (error) {
+    console.error("Unable to save sorted course template:", error);
+    alert(error.message || "Unable to save the sorted assessments.");
+  }
 }
 
 function applyCourseHeader() {
@@ -406,6 +420,15 @@ async function initializeAdminCoursePage() {
     alert(error.message || "Unable to load this course.");
   }
 }
+
+window.addEventListener("storage", (event) => {
+  if (
+    event.key === "smartStudentEnrollments" ||
+    event.key === "smartStudentAssessmentProgress"
+  ) {
+    renderAssessmentRows();
+  }
+});
 
 if (addAssignmentBtn) {
   addAssignmentBtn.addEventListener("click", addAssessment);
