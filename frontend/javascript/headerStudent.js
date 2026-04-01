@@ -1,3 +1,6 @@
+const STUDENT_HEADER_CACHE_KEY = "smartStudentHeaderMarkup";
+const STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
+
 function initializeHeaderBehavior(container) {
   function getSelectedCoursePath() {
     const selectedCourse = sessionStorage.getItem("selectedStudentCourse");
@@ -81,6 +84,7 @@ function initializeHeaderBehavior(container) {
       }
 
       sessionStorage.removeItem("selectedStudentCourse");
+      sessionStorage.removeItem(STUDENT_USER_CACHE_KEY);
       window.location.href = "login.html";
     };
   }
@@ -110,13 +114,22 @@ async function loadSharedHeader() {
     return;
   }
 
+  const cachedHeaderMarkup = sessionStorage.getItem(STUDENT_HEADER_CACHE_KEY);
+  if (cachedHeaderMarkup) {
+    headerContainer.innerHTML = cachedHeaderMarkup;
+    initializeHeaderBehavior(headerContainer);
+    return;
+  }
+
   try {
     const headerSource = headerContainer.dataset.headerSrc || "headerStudent.html";
     const response = await fetch(headerSource);
     if (!response.ok) {
       throw new Error(`Header load failed with status ${response.status}`);
     }
-    headerContainer.innerHTML = await response.text();
+    const headerMarkup = await response.text();
+    sessionStorage.setItem(STUDENT_HEADER_CACHE_KEY, headerMarkup);
+    headerContainer.innerHTML = headerMarkup;
     initializeHeaderBehavior(headerContainer);
   } catch (error) {
     console.error("Unable to load shared header:", error);

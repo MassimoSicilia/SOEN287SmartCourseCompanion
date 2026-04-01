@@ -1,5 +1,6 @@
 const supabaseClient = window.supabaseClient;
 const courseDataStore = window.CourseDataStore;
+const apiClient = window.SmartCourseApi;
 const courseTitle = document.getElementById("course-title");
 const addAssignmentBtn = document.getElementById("addAssignmentBtn");
 const editCourseBtn = document.getElementById("editCourseBtn");
@@ -8,12 +9,14 @@ const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const container = document.querySelector(".container");
 const categoriesBox = document.querySelector(".categories-box");
 const templateActionMessage = document.getElementById("template-action-message");
+const COURSE_ADMIN_USER_ID_CACHE_KEY = "smartCurrentAdminUserId";
 
 const adminCourseState = {
   course: null,
   assessments: [],
   isEditMode: false,
   lastRemovedAssessment: null,
+  submissionSummaryByAssessmentId: {},
 };
 
 function getCourseIdFromQuery() {
@@ -35,39 +38,48 @@ function getSelectedAdminCourse() {
   }
 }
 
-async function loadCourseFromSupabase(courseId) {
-  if (!supabaseClient || !courseId) {
+function getPendingSelectedAdminCourse() {
+  const selectedCourse = getSelectedAdminCourse();
+  const courseId = getCourseIdFromQuery();
+
+  if (!selectedCourse) {
     return null;
   }
 
-  const { data, error } = await supabaseClient
-    .from("available_courses")
-    .select(
-      "course_offering_id, course_code, course_name, section, instructor_name, credits, term",
-    )
-    .eq("course_offering_id", courseId)
-    .maybeSingle();
-
-  if (error) {
-    throw error;
+  if (courseId && selectedCourse.id !== courseId) {
+    return null;
   }
 
+  return selectedCourse;
+}
+
+async function loadCourseFromApi(courseId) {
+  if (!apiClient || !courseId) {
+    return null;
+  }
+
+  const data = await apiClient.getCourse(courseId);
   if (!data) {
     return null;
   }
 
   return {
-    id: data.course_offering_id,
-    code: data.course_code,
-    name: data.course_name,
+    id: data.courseOfferingId,
+    code: data.courseCode,
+    name: data.courseName,
     section: data.section,
-    instructorName: data.instructor_name,
+    instructorName: data.instructorName,
     credits: data.credits,
     term: data.term,
   };
 }
 
 async function getCurrentAdminUserId() {
+  const cachedUserId = sessionStorage.getItem(COURSE_ADMIN_USER_ID_CACHE_KEY);
+  if (cachedUserId) {
+    return cachedUserId;
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -85,6 +97,7 @@ async function getCurrentAdminUserId() {
     throw new Error("You must be logged in to save a template.");
   }
 
+  sessionStorage.setItem(COURSE_ADMIN_USER_ID_CACHE_KEY, user.id);
   return user.id;
 }
 
@@ -460,15 +473,29 @@ function applyCourseHeader() {
   document.title = `Smart Course Companion | ${adminCourseState.course.code}`;
 }
 
+function applyPendingCourseHeader() {
+  const pendingCourse = getPendingSelectedAdminCourse();
+  if (!pendingCourse) {
+    return;
+  }
+
+  adminCourseState.course = pendingCourse;
+  applyCourseHeader();
+}
+
 async function initializeAdminCoursePage() {
   try {
-    const selectedCourse = getSelectedAdminCourse();
+    applyPendingCourseHeader();
+
+    const selectedCourse = getPendingSelectedAdminCourse();
     const courseId = getCourseIdFromQuery() || selectedCourse?.id || null;
 
-    adminCourseState.course =
-      (selectedCourse && (!courseId || selectedCourse.id === courseId))
-        ? selectedCourse
-        : await loadCourseFromSupabase(courseId);
+    if (!adminCourseState.course) {
+      adminCourseState.course =
+        (selectedCourse && (!courseId || selectedCourse.id === courseId))
+          ? selectedCourse
+          : await loadCourseFromApi(courseId);
+    }
 
     if (!adminCourseState.course) {
       throw new Error("No course was selected.");
@@ -483,6 +510,10 @@ async function initializeAdminCoursePage() {
       adminCourseState.course.id,
     );
     adminCourseState.assessments = savedTemplate.assessments;
+    adminCourseState.submissionSummaryByAssessmentId =
+      await courseDataStore.loadCourseSubmissionSummaries(
+        adminCourseState.course.id,
+      );
 
     applyCourseHeader();
     updateEditButtonLabel();

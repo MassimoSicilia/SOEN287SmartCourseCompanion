@@ -1,7 +1,10 @@
 const supabaseClient = window.supabaseClient;
 const courseDataStore = window.CourseDataStore;
+const apiClient = window.SmartCourseApi;
 const courseGradesContainer = document.querySelector(".course-grades");
 const pageTitle = document.querySelector(".container h1");
+const GRADES_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
+const ENABLED_STUDENT_COURSES_CACHE_KEY = "smartEnabledStudentCourses";
 
 const CATEGORY_CONFIG = [
   { key: "assignments", label: "Assignments" },
@@ -156,6 +159,15 @@ function createEmptyStateCard(message) {
 }
 
 async function getCurrentUser() {
+  const cachedUser = sessionStorage.getItem(GRADES_STUDENT_USER_CACHE_KEY);
+  if (cachedUser) {
+    try {
+      return JSON.parse(cachedUser);
+    } catch (error) {
+      sessionStorage.removeItem(GRADES_STUDENT_USER_CACHE_KEY);
+    }
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -174,10 +186,50 @@ async function getCurrentUser() {
     return null;
   }
 
+  sessionStorage.setItem(GRADES_STUDENT_USER_CACHE_KEY, JSON.stringify(user));
   return user;
 }
 
 async function loadEnabledCourses() {
+  const cachedCourses = sessionStorage.getItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+  if (cachedCourses) {
+    try {
+      return JSON.parse(cachedCourses);
+    } catch (error) {
+      sessionStorage.removeItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+    }
+  }
+
+  if (apiClient) {
+    try {
+      const response = await apiClient.getCourses({
+        enabled: true,
+      });
+
+      const courses = (response?.courses || []).map((course) => ({
+        courseOfferingId: course.courseOfferingId,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        section: course.section,
+        instructorName: course.instructorName,
+        credits: course.credits,
+        term: course.term,
+        isEnabled: course.isEnabled,
+      }));
+      sessionStorage.setItem(
+        ENABLED_STUDENT_COURSES_CACHE_KEY,
+        JSON.stringify(courses),
+      );
+      return courses;
+    } catch (error) {
+      console.warn("Node API grades course load failed, falling back to Supabase:", error);
+    }
+  }
+
+  if (!supabaseClient) {
+    throw new Error("Neither the Node API nor Supabase client is available.");
+  }
+
   const { data, error } = await supabaseClient
     .from("available_courses")
     .select(
@@ -191,7 +243,7 @@ async function loadEnabledCourses() {
     throw error;
   }
 
-  return (data || []).map((course) => ({
+  const courses = (data || []).map((course) => ({
     courseOfferingId: course.course_offering_id,
     courseCode: course.course_code,
     courseName: course.course_name,
@@ -201,10 +253,15 @@ async function loadEnabledCourses() {
     term: course.term,
     isEnabled: course.is_enabled,
   }));
+  sessionStorage.setItem(
+    ENABLED_STUDENT_COURSES_CACHE_KEY,
+    JSON.stringify(courses),
+  );
+  return courses;
 }
 
-function getRenderableCourses(currentUser, enabledCourses) {
-  const savedCourses = courseDataStore.getStudentEnrollments(currentUser.id);
+async function getRenderableCourses(currentUser, enabledCourses) {
+  const savedCourses = await courseDataStore.loadStudentEnrollments(currentUser.id);
   const enabledCourseMap = new Map(
     enabledCourses.map((course) => [course.courseOfferingId, course]),
   );
@@ -339,6 +396,21 @@ function createCourseCard(course, assessments, courseProgress) {
   return card;
 }
 
+function renderCourseCards(courses, currentUser) {
+  courseGradesContainer.innerHTML = "";
+
+  courses.forEach((course) => {
+    const template = courseDataStore.getCourseTemplate(course.courseOfferingId);
+    const courseProgress = courseDataStore.getStudentCourseProgress(
+      currentUser.id,
+      course.courseOfferingId,
+    );
+    courseGradesContainer.appendChild(
+      createCourseCard(course, template.assessments, courseProgress),
+    );
+  });
+}
+
 async function renderGradesPage() {
   if (!courseGradesContainer) {
     return;
@@ -360,8 +432,38 @@ async function renderGradesPage() {
       return;
     }
 
+    const cachedEnabledCourses = (() => {
+      const rawValue = sessionStorage.getItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+      if (!rawValue) {
+        return [];
+      }
+
+      try {
+        return JSON.parse(rawValue);
+      } catch (error) {
+        sessionStorage.removeItem(ENABLED_STUDENT_COURSES_CACHE_KEY);
+        return [];
+      }
+    })();
+    const cachedEnrollments = courseDataStore.getStudentEnrollments(currentUser.id);
+
+    if (cachedEnabledCourses.length > 0 && cachedEnrollments.length > 0) {
+      const cachedRenderableCourses = cachedEnrollments
+        .map((course) =>
+          cachedEnabledCourses.find(
+            (enabledCourse) => enabledCourse.courseOfferingId === course.courseOfferingId,
+          ) || null,
+        )
+        .filter(Boolean);
+
+      if (cachedRenderableCourses.length > 0) {
+        setPageTitle(cachedRenderableCourses.length);
+        renderCourseCards(cachedRenderableCourses, currentUser);
+      }
+    }
+
     const enabledCourses = await loadEnabledCourses();
-    const renderableCourses = getRenderableCourses(currentUser, enabledCourses);
+    const renderableCourses = await getRenderableCourses(currentUser, enabledCourses);
 
     setPageTitle(renderableCourses.length);
 
@@ -372,23 +474,19 @@ async function renderGradesPage() {
       return;
     }
 
-    const courseCards = await Promise.all(
+    await Promise.all(
       renderableCourses.map(async (course) => {
-        const template = await courseDataStore.loadCourseTemplate(
-          course.courseOfferingId,
-        );
-        const courseProgress = courseDataStore.getStudentCourseProgress(
-          currentUser.id,
-          course.courseOfferingId,
-        );
-
-        return createCourseCard(course, template.assessments, courseProgress);
+        await Promise.all([
+          courseDataStore.loadCourseTemplate(course.courseOfferingId),
+          courseDataStore.loadStudentCourseProgress(
+            currentUser.id,
+            course.courseOfferingId,
+          ),
+        ]);
       }),
     );
 
-    courseCards.forEach((card) => {
-      courseGradesContainer.appendChild(card);
-    });
+    renderCourseCards(renderableCourses, currentUser);
   } catch (error) {
     console.error("Unable to load student grades:", error);
     setPageTitle(0);

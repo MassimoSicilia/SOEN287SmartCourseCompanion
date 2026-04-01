@@ -1,6 +1,7 @@
 const COURSE_TEMPLATE_STORAGE_KEY = "smartCourseTemplates";
 const STUDENT_ENROLLMENT_STORAGE_KEY = "smartStudentEnrollments";
 const STUDENT_PROGRESS_STORAGE_KEY = "smartStudentAssessmentProgress";
+const COURSE_SUBMISSION_SUMMARY_STORAGE_KEY = "smartCourseSubmissionSummary";
 
 function readJsonStorage(storageKey, fallbackValue) {
   try {
@@ -48,12 +49,6 @@ function normalizeWeightValue(value) {
   return rawValue.endsWith("%") ? rawValue : `${rawValue}%`;
 }
 
-function parseWeightNumber(value) {
-  const rawValue = String(value ?? "").replace("%", "").trim();
-  const numericValue = Number(rawValue);
-  return Number.isFinite(numericValue) ? numericValue : null;
-}
-
 function normalizeAssessment(assessment) {
   return {
     id: assessment?.id || assessment?.assessment_id || createAssessmentId(),
@@ -67,8 +62,8 @@ function normalizeAssessment(assessment) {
   };
 }
 
-function getSupabaseClient() {
-  return window.supabaseClient || null;
+function getApiClient() {
+  return window.SmartCourseApi || null;
 }
 
 function parseTemplateDescription(templateDescription) {
@@ -152,28 +147,21 @@ function saveCourseTemplate(courseId, assessments) {
 }
 
 async function loadCourseTemplate(courseId) {
-  const supabaseClient = getSupabaseClient();
+  const apiClient = getApiClient();
+  const cachedTemplate = getCourseTemplate(courseId);
 
-  if (!supabaseClient || !courseId) {
-    return getCourseTemplate(courseId);
+  if (!apiClient || !courseId) {
+    return cachedTemplate;
+  }
+
+  if (cachedTemplate.assessments.length > 0) {
+    return cachedTemplate;
   }
 
   try {
-    const { data, error } = await supabaseClient
-      .from("assessments")
-      .select(
-        "assessment_id, title, weight_percent, due_date, is_published",
-      )
-      .eq("course_offering_id", courseId)
-      .eq("is_published", true)
-      .order("due_date", { ascending: true });
-
-    if (error) {
-      throw error;
-    }
-
-    const normalizedAssessments = Array.isArray(data)
-      ? data.map(normalizeAssessment)
+    const response = await apiClient.getCourseTemplate(courseId);
+    const normalizedAssessments = Array.isArray(response?.assessments)
+      ? response.assessments.map(normalizeAssessment)
       : [];
 
     saveCourseTemplate(courseId, normalizedAssessments);
@@ -182,92 +170,49 @@ async function loadCourseTemplate(courseId) {
       assessments: normalizedAssessments,
     };
   } catch (error) {
-    console.error("Unable to load course template from database:", error);
+    console.error("Unable to load course template from Node API:", error);
     return getCourseTemplate(courseId);
   }
 }
 
-async function saveCourseTemplateToDatabase(courseId, assessments) {
-  const supabaseClient = getSupabaseClient();
-
-  if (!supabaseClient || !courseId) {
-    return;
-  }
-
+async function saveCourseTemplateEverywhere(courseId, assessments) {
   const normalizedAssessments = Array.isArray(assessments)
     ? assessments.map(normalizeAssessment)
     : [];
 
-  const { error: deleteError } = await supabaseClient
-    .from("assessments")
-    .delete()
-    .eq("course_offering_id", courseId);
+  saveCourseTemplate(courseId, normalizedAssessments);
 
-  if (deleteError) {
-    throw deleteError;
-  }
-
-  if (normalizedAssessments.length === 0) {
+  const apiClient = getApiClient();
+  if (!apiClient || !courseId) {
     return;
   }
 
-  const rows = normalizedAssessments.map((assessment) => ({
-    assessment_id: assessment.id,
-    course_offering_id: courseId,
-    title: assessment.name,
-    weight_percent: parseWeightNumber(assessment.weight),
-    due_date: assessment.dueDate,
-    is_published: true,
-  }));
-
-  const { error: insertError } = await supabaseClient
-    .from("assessments")
-    .insert(rows);
-
-  if (insertError) {
-    throw insertError;
-  }
-}
-
-async function saveCourseTemplateEverywhere(courseId, assessments) {
-  saveCourseTemplate(courseId, assessments);
-  await saveCourseTemplateToDatabase(courseId, assessments);
+  await apiClient.saveCourseTemplate(courseId, normalizedAssessments);
 }
 
 async function loadReusableTemplates(createdByUserId) {
-  const supabaseClient = getSupabaseClient();
-  if (!supabaseClient || !createdByUserId) {
+  const apiClient = getApiClient();
+  if (!apiClient || !createdByUserId) {
     return [];
   }
 
-  const { data, error } = await supabaseClient
-    .from("course_templates")
-    .select(
-      "course_template_id, template_name, template_description, created_by_user_id, is_active, created_at",
-    )
-    .eq("created_by_user_id", createdByUserId)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false });
+  const response = await apiClient.getReusableTemplates(createdByUserId);
 
-  if (error) {
-    throw error;
-  }
-
-  return (data || []).map((template) => {
+  return (response?.templates || []).map((template) => {
     const descriptionData = parseTemplateDescription(
-      template.template_description,
+      template.templateDescription,
     );
 
     return {
-      templateId: template.course_template_id,
-      templateName: template.template_name,
+      templateId: template.templateId,
+      templateName: template.templateName,
       templateDescription: descriptionData.summary,
       assessments: descriptionData.assessments,
       sourceCourseId: descriptionData.sourceCourseId,
       sourceCourseCode: descriptionData.sourceCourseCode,
-      createdByUserId: template.created_by_user_id,
-      isActive: template.is_active,
-      createdAt: template.created_at,
+      createdByUserId: template.createdByUserId,
+      isActive: template.isActive,
+      createdAt: template.createdAt,
     };
   });
 }
@@ -280,88 +225,37 @@ async function saveReusableTemplate({
   sourceCourseId = null,
   sourceCourseCode = "",
 }) {
-  const supabaseClient = getSupabaseClient();
-  if (!supabaseClient) {
-    throw new Error("Supabase client is not loaded.");
+  const apiClient = getApiClient();
+  if (!apiClient) {
+    throw new Error("Node API client is not loaded.");
   }
 
   const normalizedAssessments = Array.isArray(assessments)
     ? assessments.map(normalizeAssessment)
     : [];
 
-  const serializedDescription = serializeTemplateDescription({
-    summary: templateSummary,
-    assessments: normalizedAssessments,
-    sourceCourseId,
-    sourceCourseCode,
+  const response = await apiClient.saveReusableTemplate({
+    templateName,
+    templateDescription: serializeTemplateDescription({
+      summary: templateSummary,
+      assessments: normalizedAssessments,
+      sourceCourseId,
+      sourceCourseCode,
+    }),
+    createdByUserId,
   });
 
-  const { data: existingTemplate, error: lookupError } = await supabaseClient
-    .from("course_templates")
-    .select("course_template_id")
-    .eq("created_by_user_id", createdByUserId)
-    .eq("template_name", templateName)
-    .maybeSingle();
-
-  if (lookupError) {
-    throw lookupError;
-  }
-
-  if (existingTemplate?.course_template_id) {
-    const { data, error } = await supabaseClient
-      .from("course_templates")
-      .update({
-        template_description: serializedDescription,
-        is_active: true,
-      })
-      .eq("course_template_id", existingTemplate.course_template_id)
-      .select("course_template_id, template_name, template_description, created_by_user_id, is_active, created_at")
-      .single();
-
-    if (error) {
-      throw error;
-    }
-
-    const descriptionData = parseTemplateDescription(data.template_description);
-    return {
-      templateId: data.course_template_id,
-      templateName: data.template_name,
-      templateDescription: descriptionData.summary,
-      assessments: descriptionData.assessments,
-      sourceCourseId: descriptionData.sourceCourseId,
-      sourceCourseCode: descriptionData.sourceCourseCode,
-      createdByUserId: data.created_by_user_id,
-      isActive: data.is_active,
-      createdAt: data.created_at,
-    };
-  }
-
-  const { data, error } = await supabaseClient
-    .from("course_templates")
-    .insert({
-      template_name: templateName,
-      template_description: serializedDescription,
-      created_by_user_id: createdByUserId,
-      is_active: true,
-    })
-    .select("course_template_id, template_name, template_description, created_by_user_id, is_active, created_at")
-    .single();
-
-  if (error) {
-    throw error;
-  }
-
-  const descriptionData = parseTemplateDescription(data.template_description);
+  const descriptionData = parseTemplateDescription(response.templateDescription);
   return {
-    templateId: data.course_template_id,
-    templateName: data.template_name,
+    templateId: response.templateId,
+    templateName: response.templateName,
     templateDescription: descriptionData.summary,
     assessments: descriptionData.assessments,
     sourceCourseId: descriptionData.sourceCourseId,
     sourceCourseCode: descriptionData.sourceCourseCode,
-    createdByUserId: data.created_by_user_id,
-    isActive: data.is_active,
-    createdAt: data.created_at,
+    createdByUserId: response.createdByUserId,
+    isActive: response.isActive,
+    createdAt: response.createdAt,
   };
 }
 
@@ -370,23 +264,11 @@ async function applyReusableTemplateToCourse(courseId, template) {
     ? template.assessments.map(normalizeAssessment)
     : [];
 
-  saveCourseTemplate(courseId, assessments);
-  await saveCourseTemplateToDatabase(courseId, assessments);
+  await saveCourseTemplateEverywhere(courseId, assessments);
 }
 
 function getAllStudentEnrollments() {
   return readJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, {});
-}
-
-function getStudentsEnrolledInCourse(courseId) {
-  const allEnrollments = getAllStudentEnrollments();
-
-  return Object.entries(allEnrollments)
-    .filter(([, courses]) =>
-      Array.isArray(courses) &&
-      courses.some((course) => course.courseOfferingId === courseId),
-    )
-    .map(([userId]) => userId);
 }
 
 function getStudentEnrollments(userId) {
@@ -394,13 +276,60 @@ function getStudentEnrollments(userId) {
   return Array.isArray(enrollments[userId]) ? enrollments[userId] : [];
 }
 
-function saveStudentEnrollments(userId, courses) {
+function saveStudentEnrollmentsToCache(userId, courses) {
   const enrollments = getAllStudentEnrollments();
   enrollments[userId] = Array.isArray(courses) ? courses : [];
   writeJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, enrollments);
 }
 
-function upsertStudentEnrollment(userId, course) {
+async function loadStudentEnrollments(userId) {
+  const apiClient = getApiClient();
+  const cachedEnrollments = getStudentEnrollments(userId);
+  if (!apiClient || !userId) {
+    return cachedEnrollments;
+  }
+
+  if (cachedEnrollments.length > 0) {
+    return cachedEnrollments;
+  }
+
+  try {
+    const response = await apiClient.getStudentEnrollments(userId);
+    const courses = Array.isArray(response?.courses) ? response.courses : [];
+    saveStudentEnrollmentsToCache(userId, courses);
+    return courses;
+  } catch (error) {
+    console.error("Unable to load student enrollments from Node API:", error);
+    return getStudentEnrollments(userId);
+  }
+}
+
+async function saveStudentEnrollments(userId, courses) {
+  const previousCourses = getStudentEnrollments(userId);
+  saveStudentEnrollmentsToCache(userId, courses);
+
+  const apiClient = getApiClient();
+  if (!apiClient || !userId) {
+    return;
+  }
+
+  const existingIds = new Set(previousCourses.map((course) => course.courseOfferingId));
+  const nextIds = new Set((courses || []).map((course) => course.courseOfferingId));
+
+  await Promise.all(
+    (courses || [])
+      .filter((course) => !existingIds.has(course.courseOfferingId))
+      .map((course) => apiClient.addStudentEnrollment(userId, course.courseOfferingId)),
+  );
+
+  await Promise.all(
+    previousCourses
+      .filter((course) => !nextIds.has(course.courseOfferingId))
+      .map((course) => apiClient.removeStudentEnrollment(userId, course.courseOfferingId)),
+  );
+}
+
+async function upsertStudentEnrollment(userId, course) {
   const courses = getStudentEnrollments(userId);
   const existingIndex = courses.findIndex(
     (existingCourse) => existingCourse.courseOfferingId === course.courseOfferingId,
@@ -412,14 +341,28 @@ function upsertStudentEnrollment(userId, course) {
     courses.unshift(course);
   }
 
-  saveStudentEnrollments(userId, courses);
+  saveStudentEnrollmentsToCache(userId, courses);
+
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !course?.courseOfferingId) {
+    return;
+  }
+
+  await apiClient.addStudentEnrollment(userId, course.courseOfferingId);
 }
 
-function removeStudentEnrollment(userId, courseOfferingId) {
+async function removeStudentEnrollment(userId, courseOfferingId) {
   const courses = getStudentEnrollments(userId).filter(
     (course) => course.courseOfferingId !== courseOfferingId,
   );
-  saveStudentEnrollments(userId, courses);
+  saveStudentEnrollmentsToCache(userId, courses);
+
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !courseOfferingId) {
+    return;
+  }
+
+  await apiClient.removeStudentEnrollment(userId, courseOfferingId);
 }
 
 function getAllStudentProgress() {
@@ -431,12 +374,49 @@ function getStudentCourseProgress(userId, courseId) {
   return allProgress[userId]?.[courseId] || {};
 }
 
-function saveStudentCourseProgress(userId, courseId, progressByAssessmentId) {
+function saveStudentCourseProgressToCache(userId, courseId, progressByAssessmentId) {
   const allProgress = getAllStudentProgress();
   const userProgress = allProgress[userId] || {};
   userProgress[courseId] = progressByAssessmentId;
   allProgress[userId] = userProgress;
   writeJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, allProgress);
+}
+
+async function loadStudentCourseProgress(userId, courseId) {
+  const apiClient = getApiClient();
+  const cachedProgress = getStudentCourseProgress(userId, courseId);
+  if (!apiClient || !userId || !courseId) {
+    return cachedProgress;
+  }
+
+  if (Object.keys(cachedProgress).length > 0) {
+    return cachedProgress;
+  }
+
+  try {
+    const response = await apiClient.getStudentCourseProgress(userId, courseId);
+    const progressByAssessmentId = response?.progressByAssessmentId || {};
+    saveStudentCourseProgressToCache(userId, courseId, progressByAssessmentId);
+    return progressByAssessmentId;
+  } catch (error) {
+    console.error("Unable to load student progress from Node API:", error);
+    return getStudentCourseProgress(userId, courseId);
+  }
+}
+
+async function saveStudentCourseProgress(userId, courseId, progressByAssessmentId) {
+  saveStudentCourseProgressToCache(userId, courseId, progressByAssessmentId);
+
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !courseId) {
+    return;
+  }
+
+  await apiClient.saveStudentCourseProgress(
+    userId,
+    courseId,
+    progressByAssessmentId,
+  );
 }
 
 function updateStudentAssessmentProgress(userId, courseId, assessmentId, progress) {
@@ -445,39 +425,67 @@ function updateStudentAssessmentProgress(userId, courseId, assessmentId, progres
     grade: String(progress?.grade || "").trim(),
     status: String(progress?.status || "Not started").trim() || "Not started",
   };
-  saveStudentCourseProgress(userId, courseId, courseProgress);
+  return saveStudentCourseProgress(userId, courseId, courseProgress);
 }
 
-function removeStudentCourseProgress(userId, courseId) {
+async function removeStudentCourseProgress(userId, courseId) {
   const allProgress = getAllStudentProgress();
-  if (!allProgress[userId]) {
+  if (allProgress[userId]) {
+    delete allProgress[userId][courseId];
+    writeJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, allProgress);
+  }
+
+  const apiClient = getApiClient();
+  if (!apiClient || !userId || !courseId) {
     return;
   }
 
-  delete allProgress[userId][courseId];
-  writeJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, allProgress);
+  await apiClient.removeStudentCourseProgress(userId, courseId);
+}
+
+function getAllCourseSubmissionSummaries() {
+  return readJsonStorage(COURSE_SUBMISSION_SUMMARY_STORAGE_KEY, {});
+}
+
+function saveCourseSubmissionSummaryToCache(courseId, summaryByAssessmentId) {
+  const summaries = getAllCourseSubmissionSummaries();
+  summaries[courseId] = summaryByAssessmentId || {};
+  writeJsonStorage(COURSE_SUBMISSION_SUMMARY_STORAGE_KEY, summaries);
+}
+
+async function loadCourseSubmissionSummaries(courseId) {
+  const apiClient = getApiClient();
+  const cachedSummary = getAllCourseSubmissionSummaries()[courseId] || {};
+
+  if (!apiClient || !courseId) {
+    return cachedSummary;
+  }
+
+  if (Object.keys(cachedSummary).length > 0) {
+    return cachedSummary;
+  }
+
+  try {
+    const response = await apiClient.getCourseSubmissionSummary(courseId);
+    const summaryByAssessmentId = response?.summaryByAssessmentId || {};
+    saveCourseSubmissionSummaryToCache(courseId, summaryByAssessmentId);
+    return summaryByAssessmentId;
+  } catch (error) {
+    console.error("Unable to load course submission summary from Node API:", error);
+    return cachedSummary;
+  }
 }
 
 function getAssessmentSubmissionSummary(courseId, assessmentId) {
-  const enrolledStudentIds = getStudentsEnrolledInCourse(courseId);
-  const allProgress = getAllStudentProgress();
-
-  const submittedCount = enrolledStudentIds.reduce((count, userId) => {
-    const assessmentProgress = allProgress[userId]?.[courseId]?.[assessmentId];
-    return assessmentProgress?.status === "Submitted" ? count + 1 : count;
-  }, 0);
-
-  const totalCount = enrolledStudentIds.length;
-  const completionRate =
-    totalCount > 0 ? ((submittedCount / totalCount) * 100).toFixed(2) : "--";
-
-  return {
-    submittedCount,
-    totalCount,
-    completionStatusText: `${submittedCount}/${totalCount}`,
-    completionRateText:
-      totalCount > 0 ? `${completionRate}%` : "--",
-  };
+  const summaries = getAllCourseSubmissionSummaries();
+  return (
+    summaries[courseId]?.[assessmentId] || {
+      submittedCount: 0,
+      totalCount: 0,
+      completionStatusText: "0/0",
+      completionRateText: "--",
+    }
+  );
 }
 
 window.CourseDataStore = {
@@ -490,11 +498,22 @@ window.CourseDataStore = {
   saveReusableTemplate,
   applyReusableTemplateToCourse,
   getStudentEnrollments,
+  loadStudentEnrollments,
+  saveStudentEnrollments,
   upsertStudentEnrollment,
   removeStudentEnrollment,
   getStudentCourseProgress,
+  loadStudentCourseProgress,
   updateStudentAssessmentProgress,
   saveStudentCourseProgress,
   removeStudentCourseProgress,
+  loadCourseSubmissionSummaries,
   getAssessmentSubmissionSummary,
+  prefetchCourseData(userId, courseId) {
+    return Promise.all([
+      loadCourseTemplate(courseId),
+      loadStudentCourseProgress(userId, courseId),
+      loadCourseSubmissionSummaries(courseId),
+    ]);
+  },
 };

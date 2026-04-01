@@ -1,3 +1,7 @@
+const ADMIN_HEADER_CACHE_KEY = "smartAdminHeaderMarkup";
+const ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
+const ADMIN_USER_ID_CACHE_KEY = "smartCurrentAdminUserId";
+
 function initializeHeaderBehavior(container) {
   function getSelectedCoursePath() {
     const selectedCourse = sessionStorage.getItem("selectedAdminCourse");
@@ -81,6 +85,8 @@ function initializeHeaderBehavior(container) {
       }
 
       sessionStorage.removeItem("selectedAdminCourse");
+      sessionStorage.removeItem(ADMIN_PROFILE_CACHE_KEY);
+      sessionStorage.removeItem(ADMIN_USER_ID_CACHE_KEY);
       window.location.href = "../studentPages/login.html";
     };
   }
@@ -110,13 +116,22 @@ async function loadSharedHeader() {
     return;
   }
 
+  const cachedHeaderMarkup = sessionStorage.getItem(ADMIN_HEADER_CACHE_KEY);
+  if (cachedHeaderMarkup) {
+    headerContainer.innerHTML = cachedHeaderMarkup;
+    initializeHeaderBehavior(headerContainer);
+    return;
+  }
+
   try {
     const headerSource = headerContainer.dataset.headerSrc || "headerAdmin.html";
     const response = await fetch(headerSource);
     if (!response.ok) {
       throw new Error(`Header load failed with status ${response.status}`);
     }
-    headerContainer.innerHTML = await response.text();
+    const headerMarkup = await response.text();
+    sessionStorage.setItem(ADMIN_HEADER_CACHE_KEY, headerMarkup);
+    headerContainer.innerHTML = headerMarkup;
     initializeHeaderBehavior(headerContainer);
   } catch (error) {
     console.error("Unable to load shared header:", error);

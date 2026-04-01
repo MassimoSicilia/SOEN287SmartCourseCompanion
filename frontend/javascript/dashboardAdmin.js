@@ -1,4 +1,5 @@
 const supabaseClient = window.supabaseClient;
+const apiClient = window.SmartCourseApi;
 
 const createCourseButton = document.getElementById("create-course-btn");
 const createCourseModal = document.getElementById("create-course-modal");
@@ -8,6 +9,7 @@ const closeCreateCourseModal = document.getElementById(
 const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
 const courseTemplateSelect = document.getElementById("course-template-select");
+const DASHBOARD_ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
 
 const adminDashboardState = {
   reusableTemplates: [],
@@ -100,6 +102,15 @@ function createEmptyState() {
 }
 
 async function getCurrentAdminProfile() {
+  const cachedProfile = sessionStorage.getItem(DASHBOARD_ADMIN_PROFILE_CACHE_KEY);
+  if (cachedProfile) {
+    try {
+      return JSON.parse(cachedProfile);
+    } catch (error) {
+      sessionStorage.removeItem(DASHBOARD_ADMIN_PROFILE_CACHE_KEY);
+    }
+  }
+
   if (!supabaseClient) {
     throw new Error("Supabase client is not loaded.");
   }
@@ -125,23 +136,43 @@ async function getCurrentAdminProfile() {
     throw new Error("Your account is missing a first or last name.");
   }
 
-  return {
+  const profile = {
     userId: user.id,
     fullName,
   };
+
+  sessionStorage.setItem(DASHBOARD_ADMIN_PROFILE_CACHE_KEY, JSON.stringify(profile));
+  return profile;
 }
 
 async function loadCourses() {
-  if (!supabaseClient) {
-    throw new Error("Supabase client is not loaded.");
-  }
-
   const adminProfile = await getCurrentAdminProfile();
+
+  if (apiClient) {
+    try {
+      const response = await apiClient.getCourses({
+        enabled: true,
+        createdByUserId: adminProfile.userId,
+      });
+
+      return (response?.courses || []).map((course) => ({
+        id: course.courseOfferingId,
+        code: course.courseCode,
+        name: course.courseName,
+        section: course.section,
+        instructorName: course.instructorName,
+        credits: course.credits,
+        term: course.term,
+      }));
+    } catch (error) {
+      console.warn("Node API admin course load failed, falling back to Supabase:", error);
+    }
+  }
 
   const { data, error } = await supabaseClient
     .from("available_courses")
     .select(
-      "course_offering_id, course_code, course_name, section, instructor_name, credits, is_enabled, created_by_user_id",
+      "course_offering_id, course_code, course_name, section, instructor_name, credits, term, is_enabled, created_by_user_id",
     )
     .eq("is_enabled", true)
     .eq("created_by_user_id", adminProfile.userId)
@@ -196,15 +227,11 @@ async function disableCourse(courseId) {
 
   closeAllCourseMenus();
 
-  const { error } = await supabaseClient
-    .from("available_courses")
-    .update({
-      is_enabled: false,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("course_offering_id", courseId);
-
-  if (error) {
+  try {
+    await apiClient.updateCourse(courseId, {
+      isEnabled: false,
+    });
+  } catch (error) {
     alert(error.message || "Failed to disable course.");
     return;
   }
@@ -223,12 +250,9 @@ async function deleteCourse(courseId) {
 
   closeAllCourseMenus();
 
-  const { error } = await supabaseClient
-    .from("available_courses")
-    .delete()
-    .eq("course_offering_id", courseId);
-
-  if (error) {
+  try {
+    await apiClient.deleteCourse(courseId);
+  } catch (error) {
     alert(error.message || "Failed to delete course.");
     return;
   }
@@ -342,27 +366,17 @@ if (createCourseForm && coursesList) {
     try {
       const adminProfile = await getCurrentAdminProfile();
       const timestamp = new Date().toISOString();
-      const { data, error } = await supabaseClient
-        .from("available_courses")
-        .insert({
-          course_code: courseCode,
-          course_name: courseName,
-          section,
-          instructor_name: adminProfile.fullName,
-          credits: Number(credits),
-          term,
-          created_by_user_id: adminProfile.userId,
-          created_at: timestamp,
-          updated_at: timestamp,
-        })
-        .select(
-          "course_offering_id, course_code, course_name, section, instructor_name, credits, term",
-        )
-        .single();
-
-      if (error) {
-        throw error;
-      }
+      const data = await apiClient.createCourse({
+        courseCode,
+        courseName,
+        section,
+        instructorName: adminProfile.fullName,
+        credits: Number(credits),
+        term,
+        createdByUserId: adminProfile.userId,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
 
       if (selectedTemplateId) {
         const selectedTemplate = adminDashboardState.reusableTemplates.find(
@@ -371,7 +385,7 @@ if (createCourseForm && coursesList) {
 
         if (selectedTemplate) {
           await window.CourseDataStore.applyReusableTemplateToCourse(
-            data.course_offering_id,
+            data.courseOfferingId,
             selectedTemplate,
           );
         }
