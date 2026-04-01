@@ -3,6 +3,7 @@ const courseDataStore = window.CourseDataStore;
 const courseTitle = document.getElementById("course-title");
 const addAssignmentBtn = document.getElementById("addAssignmentBtn");
 const editCourseBtn = document.getElementById("editCourseBtn");
+const saveTemplateBtn = document.getElementById("saveTemplateBtn");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const container = document.querySelector(".container");
 const categoriesBox = document.querySelector(".categories-box");
@@ -64,6 +65,27 @@ async function loadCourseFromSupabase(courseId) {
     credits: data.credits,
     term: data.term,
   };
+}
+
+async function getCurrentAdminUserId() {
+  if (!supabaseClient) {
+    throw new Error("Supabase client is not loaded.");
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!user) {
+    throw new Error("You must be logged in to save a template.");
+  }
+
+  return user.id;
 }
 
 function createCell(content) {
@@ -313,6 +335,56 @@ async function persistTemplate() {
   );
 }
 
+async function saveAsReusableTemplate() {
+  if (!adminCourseState.course || !courseDataStore) {
+    return;
+  }
+
+  try {
+    let assessmentsToSave = adminCourseState.assessments;
+    if (adminCourseState.isEditMode) {
+      assessmentsToSave = collectAssessmentsFromInputs();
+      adminCourseState.assessments = assessmentsToSave;
+      renderAssessmentRows();
+    }
+
+    if (assessmentsToSave.length === 0) {
+      alert("Add at least one assessment before saving a reusable template.");
+      return;
+    }
+
+    const defaultTemplateName = `${adminCourseState.course.code} Template`;
+    const templateName = window.prompt(
+      "Template name:",
+      defaultTemplateName,
+    )?.trim();
+
+    if (!templateName) {
+      return;
+    }
+
+    const templateSummary = window.prompt(
+      "Optional template description:",
+      `Reusable assessment structure for ${adminCourseState.course.code}`,
+    )?.trim() || "";
+
+    const adminUserId = await getCurrentAdminUserId();
+    await courseDataStore.saveReusableTemplate({
+      templateName,
+      templateSummary,
+      createdByUserId: adminUserId,
+      assessments: assessmentsToSave,
+      sourceCourseId: adminCourseState.course.id,
+      sourceCourseCode: adminCourseState.course.code,
+    });
+
+    alert(`Reusable template "${templateName}" saved.`);
+  } catch (error) {
+    console.error("Unable to save reusable template:", error);
+    alert(error.message || "Unable to save this reusable template.");
+  }
+}
+
 async function toggleEditCourseDetails() {
   if (!adminCourseState.isEditMode) {
     adminCourseState.isEditMode = true;
@@ -436,6 +508,10 @@ if (addAssignmentBtn) {
 
 if (editCourseBtn) {
   editCourseBtn.addEventListener("click", toggleEditCourseDetails);
+}
+
+if (saveTemplateBtn) {
+  saveTemplateBtn.addEventListener("click", saveAsReusableTemplate);
 }
 
 if (sortDueDateBtn) {

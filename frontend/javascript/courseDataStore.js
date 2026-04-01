@@ -71,6 +71,52 @@ function getSupabaseClient() {
   return window.supabaseClient || null;
 }
 
+function parseTemplateDescription(templateDescription) {
+  if (!templateDescription) {
+    return {
+      summary: "",
+      assessments: [],
+      sourceCourseId: null,
+      sourceCourseCode: "",
+    };
+  }
+
+  try {
+    const parsedValue = JSON.parse(templateDescription);
+    return {
+      summary: String(parsedValue.summary || "").trim(),
+      assessments: Array.isArray(parsedValue.assessments)
+        ? parsedValue.assessments.map(normalizeAssessment)
+        : [],
+      sourceCourseId: parsedValue.sourceCourseId || null,
+      sourceCourseCode: String(parsedValue.sourceCourseCode || "").trim(),
+    };
+  } catch (error) {
+    return {
+      summary: String(templateDescription).trim(),
+      assessments: [],
+      sourceCourseId: null,
+      sourceCourseCode: "",
+    };
+  }
+}
+
+function serializeTemplateDescription({
+  summary = "",
+  assessments = [],
+  sourceCourseId = null,
+  sourceCourseCode = "",
+}) {
+  return JSON.stringify({
+    summary: String(summary).trim(),
+    sourceCourseId,
+    sourceCourseCode: String(sourceCourseCode).trim(),
+    assessments: Array.isArray(assessments)
+      ? assessments.map(normalizeAssessment)
+      : [],
+  });
+}
+
 function getAllCourseTemplates() {
   return readJsonStorage(COURSE_TEMPLATE_STORAGE_KEY, {});
 }
@@ -188,6 +234,146 @@ async function saveCourseTemplateEverywhere(courseId, assessments) {
   await saveCourseTemplateToDatabase(courseId, assessments);
 }
 
+async function loadReusableTemplates(createdByUserId) {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient || !createdByUserId) {
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from("course_templates")
+    .select(
+      "course_template_id, template_name, template_description, created_by_user_id, is_active, created_at",
+    )
+    .eq("created_by_user_id", createdByUserId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data || []).map((template) => {
+    const descriptionData = parseTemplateDescription(
+      template.template_description,
+    );
+
+    return {
+      templateId: template.course_template_id,
+      templateName: template.template_name,
+      templateDescription: descriptionData.summary,
+      assessments: descriptionData.assessments,
+      sourceCourseId: descriptionData.sourceCourseId,
+      sourceCourseCode: descriptionData.sourceCourseCode,
+      createdByUserId: template.created_by_user_id,
+      isActive: template.is_active,
+      createdAt: template.created_at,
+    };
+  });
+}
+
+async function saveReusableTemplate({
+  templateName,
+  templateSummary = "",
+  createdByUserId,
+  assessments,
+  sourceCourseId = null,
+  sourceCourseCode = "",
+}) {
+  const supabaseClient = getSupabaseClient();
+  if (!supabaseClient) {
+    throw new Error("Supabase client is not loaded.");
+  }
+
+  const normalizedAssessments = Array.isArray(assessments)
+    ? assessments.map(normalizeAssessment)
+    : [];
+
+  const serializedDescription = serializeTemplateDescription({
+    summary: templateSummary,
+    assessments: normalizedAssessments,
+    sourceCourseId,
+    sourceCourseCode,
+  });
+
+  const { data: existingTemplate, error: lookupError } = await supabaseClient
+    .from("course_templates")
+    .select("course_template_id")
+    .eq("created_by_user_id", createdByUserId)
+    .eq("template_name", templateName)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw lookupError;
+  }
+
+  if (existingTemplate?.course_template_id) {
+    const { data, error } = await supabaseClient
+      .from("course_templates")
+      .update({
+        template_description: serializedDescription,
+        is_active: true,
+      })
+      .eq("course_template_id", existingTemplate.course_template_id)
+      .select("course_template_id, template_name, template_description, created_by_user_id, is_active, created_at")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    const descriptionData = parseTemplateDescription(data.template_description);
+    return {
+      templateId: data.course_template_id,
+      templateName: data.template_name,
+      templateDescription: descriptionData.summary,
+      assessments: descriptionData.assessments,
+      sourceCourseId: descriptionData.sourceCourseId,
+      sourceCourseCode: descriptionData.sourceCourseCode,
+      createdByUserId: data.created_by_user_id,
+      isActive: data.is_active,
+      createdAt: data.created_at,
+    };
+  }
+
+  const { data, error } = await supabaseClient
+    .from("course_templates")
+    .insert({
+      template_name: templateName,
+      template_description: serializedDescription,
+      created_by_user_id: createdByUserId,
+      is_active: true,
+    })
+    .select("course_template_id, template_name, template_description, created_by_user_id, is_active, created_at")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  const descriptionData = parseTemplateDescription(data.template_description);
+  return {
+    templateId: data.course_template_id,
+    templateName: data.template_name,
+    templateDescription: descriptionData.summary,
+    assessments: descriptionData.assessments,
+    sourceCourseId: descriptionData.sourceCourseId,
+    sourceCourseCode: descriptionData.sourceCourseCode,
+    createdByUserId: data.created_by_user_id,
+    isActive: data.is_active,
+    createdAt: data.created_at,
+  };
+}
+
+async function applyReusableTemplateToCourse(courseId, template) {
+  const assessments = Array.isArray(template?.assessments)
+    ? template.assessments.map(normalizeAssessment)
+    : [];
+
+  saveCourseTemplate(courseId, assessments);
+  await saveCourseTemplateToDatabase(courseId, assessments);
+}
+
 function getAllStudentEnrollments() {
   return readJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, {});
 }
@@ -300,6 +486,9 @@ window.CourseDataStore = {
   loadCourseTemplate,
   saveCourseTemplate,
   saveCourseTemplateEverywhere,
+  loadReusableTemplates,
+  saveReusableTemplate,
+  applyReusableTemplateToCourse,
   getStudentEnrollments,
   upsertStudentEnrollment,
   removeStudentEnrollment,
