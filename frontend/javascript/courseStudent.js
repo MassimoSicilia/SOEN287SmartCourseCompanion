@@ -1,30 +1,70 @@
+const supabaseClient = window.supabaseClient;
+const courseDataStore = window.CourseDataStore;
 const inProgressBtn = document.getElementById("inProgressBtn");
 const completedBtn = document.getElementById("completedBtn");
 const inProgressContent = document.getElementById("inProgressContent");
 const completedContent = document.getElementById("completedContent");
 const sortDueDateBtn = document.getElementById("sortDueDateBtn");
-const STATUS_OPTIONS = ["Not started", "In progress", "Submitted"];
 const courseTitle = document.getElementById("course-title");
+const courseStatusMessage = document.getElementById("courseStatusMessage");
+const STATUS_OPTIONS = ["Not started", "In progress", "Submitted"];
 
-function initializeSelectedCourseTitle() {
-  if (!courseTitle) {
+const studentCourseState = {
+  currentUser: null,
+  course: null,
+  assessments: [],
+  progressByAssessmentId: {},
+  isSortedByDueDate: false,
+};
+
+function setStatusMessage(message = "", isError = false) {
+  if (!courseStatusMessage) {
     return;
   }
 
-  const selectedCourse = sessionStorage.getItem("selectedStudentCourse");
-  if (!selectedCourse) {
-    return;
+  courseStatusMessage.textContent = message;
+  courseStatusMessage.classList.toggle("is-error", Boolean(isError));
+}
+
+function getCourseIdFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("courseId");
+}
+
+function getSelectedStudentCourse() {
+  const savedCourse = sessionStorage.getItem("selectedStudentCourse");
+  if (!savedCourse) {
+    return null;
   }
 
   try {
-    const parsedCourse = JSON.parse(selectedCourse);
-    if (parsedCourse?.courseCode) {
-      courseTitle.textContent = parsedCourse.courseCode;
-      document.title = `Smart Course Companion | ${parsedCourse.courseCode}`;
-    }
+    return JSON.parse(savedCourse);
   } catch (error) {
-    console.error("Unable to load selected course title:", error);
+    console.error("Unable to parse selected student course:", error);
+    return null;
   }
+}
+
+async function getCurrentUser() {
+  if (!supabaseClient) {
+    throw new Error("Supabase client is not loaded.");
+  }
+
+  const {
+    data: { user },
+    error,
+  } = await supabaseClient.auth.getUser();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!user) {
+    window.location.href = "login.html";
+    return null;
+  }
+
+  return user;
 }
 
 function parseDueDateValue(value) {
@@ -32,26 +72,68 @@ function parseDueDateValue(value) {
   return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
 }
 
-function sortRowsByDueDate(container) {
-  if (!container) {
+function getRenderableAssessments() {
+  const assessments = [...studentCourseState.assessments];
+  if (studentCourseState.isSortedByDueDate) {
+    assessments.sort((left, right) => {
+      return parseDueDateValue(left.dueDate) - parseDueDateValue(right.dueDate);
+    });
+  }
+
+  return assessments;
+}
+
+function normalizeGradeText(value) {
+  const trimmedValue = String(value || "").trim();
+  if (!trimmedValue) {
+    return "";
+  }
+
+  if (trimmedValue.includes("%")) {
+    return trimmedValue;
+  }
+
+  if (/^\d+(\.\d+)?$/.test(trimmedValue)) {
+    return `${trimmedValue}%`;
+  }
+
+  return trimmedValue;
+}
+
+function isValidGrade(value) {
+  const cleanedValue = String(value || "").replace("%", "").trim();
+  if (!cleanedValue) {
+    return false;
+  }
+
+  const numericValue = Number(cleanedValue);
+  return Number.isFinite(numericValue) && numericValue >= 0 && numericValue <= 100;
+}
+
+function getAssessmentProgress(assessmentId) {
+  return (
+    studentCourseState.progressByAssessmentId[assessmentId] || {
+      grade: "",
+      status: "Not started",
+    }
+  );
+}
+
+function persistAssessmentProgress(assessmentId, nextProgress) {
+  if (!studentCourseState.currentUser || !studentCourseState.course) {
     return;
   }
 
-  const rows = Array.from(
-    container.querySelectorAll(":scope > .assignment-row"),
+  studentCourseState.progressByAssessmentId[assessmentId] = {
+    grade: String(nextProgress.grade || "").trim(),
+    status: String(nextProgress.status || "Not started").trim() || "Not started",
+  };
+
+  courseDataStore.saveStudentCourseProgress(
+    studentCourseState.currentUser.id,
+    studentCourseState.course.courseOfferingId,
+    studentCourseState.progressByAssessmentId,
   );
-  rows.sort((a, b) => {
-    const aDate = parseDueDateValue(a.children[2]?.textContent ?? "");
-    const bDate = parseDueDateValue(b.children[2]?.textContent ?? "");
-    return aDate - bDate;
-  });
-
-  rows.forEach((row) => container.appendChild(row));
-}
-
-function sortStudentAssignmentsByDueDate() {
-  sortRowsByDueDate(inProgressContent);
-  sortRowsByDueDate(completedContent);
 }
 
 function createCell(text) {
@@ -60,22 +142,7 @@ function createCell(text) {
   return cell;
 }
 
-function createStatusSelect(selectedValue = "") {
-  const select = document.createElement("select");
-  select.className = "cell-input";
-
-  STATUS_OPTIONS.forEach((status) => {
-    const option = document.createElement("option");
-    option.value = status;
-    option.textContent = status;
-    select.appendChild(option);
-  });
-
-  select.value = selectedValue;
-  return select;
-}
-
-function createCompletedStatusCell(statusText = "Submitted") {
+function createCompletedStatusCell(assessmentId, statusText = "Submitted") {
   const statusCell = document.createElement("div");
   statusCell.className = "completed-status-cell";
 
@@ -85,6 +152,7 @@ function createCompletedStatusCell(statusText = "Submitted") {
   const undoBtn = document.createElement("button");
   undoBtn.type = "button";
   undoBtn.className = "undo-btn";
+  undoBtn.dataset.assessmentId = assessmentId;
   undoBtn.dataset.action = "undo-submitted";
   undoBtn.textContent = "Undo";
 
@@ -92,234 +160,124 @@ function createCompletedStatusCell(statusText = "Submitted") {
   return statusCell;
 }
 
-function handleCompletedContentClick(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-
-  const actionEl = target.closest("[data-action='undo-submitted']");
-  if (!actionEl) {
-    return;
-  }
-
-  const row = actionEl.closest(".assignment-row");
-  moveRowToInProgress(row);
-}
-
-function moveRowToInProgress(row) {
-  if (!row || !inProgressContent) {
-    return;
-  }
-
-  const name = row.children[0]?.textContent?.trim() ?? "";
-  const weight = row.children[1]?.textContent?.trim() ?? "";
-  const dueDate = row.children[2]?.textContent?.trim() ?? "";
-  const grade = row.children[3]?.textContent?.trim() ?? "";
-
-  row.innerHTML = "";
-  row.append(createCell(name), createCell(weight), createCell(dueDate));
+function createInProgressRow(assessment) {
+  const progress = getAssessmentProgress(assessment.id);
+  const row = document.createElement("div");
+  row.className = "assignment-row";
+  row.dataset.assessmentId = assessment.id;
 
   const gradeInput = document.createElement("input");
   gradeInput.type = "text";
   gradeInput.placeholder = "e.g. 85%";
   gradeInput.className = "cell-input";
-  gradeInput.value = grade;
+  gradeInput.value = progress.grade;
 
-  row.append(gradeInput, createStatusSelect("In progress"));
-  inProgressContent.appendChild(row);
-}
+  const statusSelect = document.createElement("select");
+  statusSelect.title = "Status";
+  statusSelect.className = "cell-input";
 
-function decorateCompletedRow(row) {
-  if (!row) {
-    return;
-  }
+  STATUS_OPTIONS.forEach((status) => {
+    const option = document.createElement("option");
+    option.value = status;
+    option.textContent = status;
+    statusSelect.appendChild(option);
+  });
 
-  const statusCell = row.children[4];
-  if (!statusCell || statusCell.querySelector(".undo-btn")) {
-    return;
-  }
+  statusSelect.value = STATUS_OPTIONS.includes(progress.status)
+    ? progress.status
+    : "Not started";
 
-  const statusText = statusCell.textContent.trim() || "Submitted";
-  statusCell.replaceWith(createCompletedStatusCell(statusText));
-}
-
-function decorateCompletedRows() {
-  if (!completedContent) {
-    return;
-  }
-
-  const rows = completedContent.querySelectorAll(":scope > .assignment-row");
-  rows.forEach((row) => decorateCompletedRow(row));
-}
-
-function normalizeGradeText(value) {
-  const trimmed = String(value).trim();
-  if (!trimmed) {
-    return trimmed;
-  }
-
-  if (trimmed.includes("%")) {
-    return trimmed;
-  }
-
-  if (/^\d+(\.\d+)?$/.test(trimmed)) {
-    return `${trimmed}%`;
-  }
-
-  return trimmed;
-}
-
-function clearGradeError(gradeInput) {
-  if (gradeInput instanceof HTMLInputElement) {
-    gradeInput.setCustomValidity("");
-  }
-}
-
-function getGradeInput(targetOrEvent) {
-  if (targetOrEvent instanceof HTMLInputElement) {
-    return targetOrEvent;
-  }
-
-  if (
-    targetOrEvent &&
-    targetOrEvent.target &&
-    targetOrEvent.target instanceof HTMLInputElement
-  ) {
-    return targetOrEvent.target;
-  }
-
-  return null;
-}
-
-function removePercentSymbol(value) {
-  const trimmedValue = value.trim();
-  if (trimmedValue.endsWith("%")) {
-    return trimmedValue.slice(0, -1).trim();
-  }
-
-  return trimmedValue;
-}
-
-function strictCoursePercent(targetOrEvent) {
-  const gradeInput = getGradeInput(targetOrEvent);
-  if (!gradeInput) {
-    return false;
-  }
-
-  const rawValue = gradeInput.value.trim();
-  if (!rawValue) {
-    gradeInput.setCustomValidity("Please enter a grade between 0 and 100.");
-    return false;
-  }
-
-  const cleanedValue = removePercentSymbol(rawValue);
-  const numericPattern = /^\d+(\.\d+)?$/;
-  if (!numericPattern.test(cleanedValue)) {
-    gradeInput.setCustomValidity(
-      "Please enter a valid number between 0 and 100.",
-    );
-    return false;
-  }
-
-  const numericValue = Number(cleanedValue);
-  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
-    gradeInput.setCustomValidity(
-      "Please enter a valid number between 0 and 100.",
-    );
-    return false;
-  }
-
-  gradeInput.setCustomValidity("");
-  gradeInput.value = `${numericValue}%`;
-  return true;
-}
-
-function moveRowToCompleted(row) {
-  if (!row || !completedContent) {
-    return;
-  }
-
-  const name = row.children[0]?.textContent?.trim() ?? "";
-  const weight = row.children[1]?.textContent?.trim() ?? "";
-  const dueDate = row.children[2]?.textContent?.trim() ?? "";
-  const gradeInput = row.querySelector('input[type="text"]');
-  const statusSelect = row.querySelector("select");
-
-  const grade = gradeInput?.value?.trim() || "N/A";
-  const status = statusSelect?.value?.trim() || "Submitted";
-
-  row.innerHTML = "";
   row.append(
-    createCell(name),
-    createCell(weight),
-    createCell(dueDate),
-    createCell(normalizeGradeText(grade)),
-    createCompletedStatusCell(status),
+    createCell(assessment.name),
+    createCell(assessment.weight),
+    createCell(assessment.dueDate),
+    gradeInput,
+    statusSelect,
   );
 
-  completedContent.appendChild(row);
+  return row;
 }
 
-function handleStatusChange(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) {
+function createCompletedRow(assessment) {
+  const progress = getAssessmentProgress(assessment.id);
+  const row = document.createElement("div");
+  row.className = "assignment-row";
+  row.dataset.assessmentId = assessment.id;
+
+  row.append(
+    createCell(assessment.name),
+    createCell(assessment.weight),
+    createCell(assessment.dueDate),
+    createCell(normalizeGradeText(progress.grade) || "N/A"),
+    createCompletedStatusCell(assessment.id, progress.status || "Submitted"),
+  );
+
+  return row;
+}
+
+function createEmptyState(message) {
+  const state = document.createElement("div");
+  state.className = "assignment-row empty-assessment-row";
+  state.append(
+    createCell(message),
+    createCell(""),
+    createCell(""),
+    createCell(""),
+    createCell(""),
+  );
+  return state;
+}
+
+function renderAssessments() {
+  if (!inProgressContent || !completedContent) {
     return;
   }
 
-  if (target.value !== "Submitted") {
+  inProgressContent.innerHTML = "";
+  completedContent.innerHTML = "";
+
+  const assessments = getRenderableAssessments();
+  if (assessments.length === 0) {
+    inProgressContent.appendChild(
+      createEmptyState("No assessment template has been created for this course yet."),
+    );
+    completedContent.appendChild(
+      createEmptyState("No completed assessments yet."),
+    );
     return;
   }
 
-  const row = target.closest(".assignment-row");
-  const gradeInput = row?.querySelector('input[type="text"]');
-  const gradeValue = gradeInput?.value?.trim() ?? "";
+  const inProgressAssessments = [];
+  const completedAssessments = [];
 
-  if (!gradeValue) {
-    target.value = "Not started";
-
-    if (gradeInput instanceof HTMLInputElement) {
-      gradeInput.setCustomValidity(
-        "Please enter a grade before marking this assessment as Submitted.",
-      );
-      gradeInput.reportValidity();
-      gradeInput.focus();
+  assessments.forEach((assessment) => {
+    const progress = getAssessmentProgress(assessment.id);
+    if (progress.status === "Submitted") {
+      completedAssessments.push(assessment);
+      return;
     }
-    return;
+
+    inProgressAssessments.push(assessment);
+  });
+
+  if (inProgressAssessments.length === 0) {
+    inProgressContent.appendChild(
+      createEmptyState("All current assessments are marked as submitted."),
+    );
+  } else {
+    inProgressAssessments.forEach((assessment) => {
+      inProgressContent.appendChild(createInProgressRow(assessment));
+    });
   }
 
-  if (!strictCoursePercent(gradeInput)) {
-    target.value = "Not started";
-    if (gradeInput instanceof HTMLInputElement) {
-      gradeInput.reportValidity();
-      gradeInput.focus();
-    }
-    return;
-  }
-
-  clearGradeError(gradeInput);
-  moveRowToCompleted(row);
-}
-
-function handleInProgressInput(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-
-  if (target.matches('input[type="text"]')) {
-    clearGradeError(target);
-  }
-}
-
-function handleInProgressBlur(event) {
-  const target = event.target;
-  if (!(target instanceof HTMLInputElement)) {
-    return;
-  }
-
-  if (target.matches('input[type="text"]')) {
-    strictCoursePercent(target);
+  if (completedAssessments.length === 0) {
+    completedContent.appendChild(
+      createEmptyState("No assessments have been submitted yet."),
+    );
+  } else {
+    completedAssessments.forEach((assessment) => {
+      completedContent.appendChild(createCompletedRow(assessment));
+    });
   }
 }
 
@@ -339,6 +297,192 @@ function setActiveTab(showCompleted) {
   completedBtn.classList.toggle("active", showCompleted);
 }
 
+function loadSelectedCourse() {
+  const selectedCourse = getSelectedStudentCourse();
+  const courseId = getCourseIdFromQuery();
+
+  if (selectedCourse && (!courseId || selectedCourse.courseOfferingId === courseId)) {
+    return selectedCourse;
+  }
+
+  if (!studentCourseState.currentUser || !courseId || !courseDataStore) {
+    return null;
+  }
+
+  const enrolledCourses = courseDataStore.getStudentEnrollments(
+    studentCourseState.currentUser.id,
+  );
+
+  return (
+    enrolledCourses.find((course) => course.courseOfferingId === courseId) || null
+  );
+}
+
+function applyCourseHeader() {
+  if (!courseTitle || !studentCourseState.course) {
+    return;
+  }
+
+  courseTitle.textContent = studentCourseState.course.courseCode;
+  document.title = `Smart Course Companion | ${studentCourseState.course.courseCode}`;
+}
+
+function handleInProgressInput(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const row = target.closest(".assignment-row");
+  const assessmentId = row?.dataset.assessmentId;
+  if (!assessmentId) {
+    return;
+  }
+
+  const existingProgress = getAssessmentProgress(assessmentId);
+  persistAssessmentProgress(assessmentId, {
+    ...existingProgress,
+    grade: target.value,
+  });
+}
+
+function handleStatusChange(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const row = target.closest(".assignment-row");
+  const assessmentId = row?.dataset.assessmentId;
+  if (!assessmentId) {
+    return;
+  }
+
+  const gradeInput = row.querySelector('input[type="text"]');
+  const gradeValue = gradeInput?.value?.trim() || "";
+
+  if (target.value === "Submitted" && !isValidGrade(gradeValue)) {
+    target.value = "Not started";
+    if (gradeInput instanceof HTMLInputElement) {
+      gradeInput.setCustomValidity(
+        "Please enter a grade between 0 and 100 before submitting.",
+      );
+      gradeInput.reportValidity();
+      gradeInput.focus();
+    }
+    return;
+  }
+
+  if (gradeInput instanceof HTMLInputElement) {
+    gradeInput.setCustomValidity("");
+  }
+
+  persistAssessmentProgress(assessmentId, {
+    grade: normalizeGradeText(gradeValue),
+    status: target.value,
+  });
+  renderAssessments();
+}
+
+function handleInProgressBlur(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const row = target.closest(".assignment-row");
+  const assessmentId = row?.dataset.assessmentId;
+  if (!assessmentId) {
+    return;
+  }
+
+  const normalizedGrade = normalizeGradeText(target.value);
+  if (normalizedGrade && !isValidGrade(normalizedGrade)) {
+    target.setCustomValidity("Please enter a valid number between 0 and 100.");
+    target.reportValidity();
+    return;
+  }
+
+  target.setCustomValidity("");
+  target.value = normalizedGrade;
+
+  const existingProgress = getAssessmentProgress(assessmentId);
+  persistAssessmentProgress(assessmentId, {
+    ...existingProgress,
+    grade: normalizedGrade,
+  });
+}
+
+function handleCompletedContentClick(event) {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const undoButton = target.closest("[data-action='undo-submitted']");
+  if (!(undoButton instanceof HTMLElement)) {
+    return;
+  }
+
+  const assessmentId = undoButton.dataset.assessmentId;
+  if (!assessmentId) {
+    return;
+  }
+
+  const existingProgress = getAssessmentProgress(assessmentId);
+  persistAssessmentProgress(assessmentId, {
+    ...existingProgress,
+    status: "In progress",
+  });
+  renderAssessments();
+  setActiveTab(false);
+}
+
+async function initializeStudentCoursePage() {
+  try {
+    studentCourseState.currentUser = await getCurrentUser();
+    if (!studentCourseState.currentUser) {
+      return;
+    }
+
+    studentCourseState.course = loadSelectedCourse();
+    if (!studentCourseState.course) {
+      throw new Error("Open this page from a course on your dashboard.");
+    }
+
+    sessionStorage.setItem(
+      "selectedStudentCourse",
+      JSON.stringify(studentCourseState.course),
+    );
+
+    const template = courseDataStore.getCourseTemplate(
+      studentCourseState.course.courseOfferingId,
+    );
+
+    studentCourseState.assessments = template.assessments;
+    studentCourseState.progressByAssessmentId = courseDataStore.getStudentCourseProgress(
+      studentCourseState.currentUser.id,
+      studentCourseState.course.courseOfferingId,
+    );
+
+    applyCourseHeader();
+    renderAssessments();
+    setActiveTab(false);
+
+    if (studentCourseState.assessments.length === 0) {
+      setStatusMessage(
+        "Your instructor has not added the course assessment template yet.",
+      );
+      return;
+    }
+
+    setStatusMessage("");
+  } catch (error) {
+    console.error("Unable to initialize student course page:", error);
+    setStatusMessage(error.message || "Unable to load this course.", true);
+  }
+}
+
 if (inProgressBtn && completedBtn) {
   inProgressBtn.addEventListener("click", () => setActiveTab(false));
   completedBtn.addEventListener("click", () => setActiveTab(true));
@@ -355,9 +499,10 @@ if (completedContent) {
 }
 
 if (sortDueDateBtn) {
-  sortDueDateBtn.addEventListener("click", sortStudentAssignmentsByDueDate);
+  sortDueDateBtn.addEventListener("click", () => {
+    studentCourseState.isSortedByDueDate = true;
+    renderAssessments();
+  });
 }
 
-decorateCompletedRows();
-setActiveTab(false);
-initializeSelectedCourseTitle();
+initializeStudentCoursePage();

@@ -1,4 +1,5 @@
 const supabaseClient = window.supabaseClient;
+const courseDataStore = window.CourseDataStore;
 const addCourseButton = document.getElementById("add-course-btn");
 const addCourseModal = document.getElementById("addCourseModal");
 const closeAddCourseModal = document.getElementById("closeAddCourseModal");
@@ -56,8 +57,12 @@ function openModal() {
   document.body.style.overflow = "hidden";
 }
 
-function formatTermName(course) {
-  return course.termName || "Unknown term";
+function getDisplayTerm(course) {
+  return course.term || "Unknown term";
+}
+
+function getDisplayCredits(course) {
+  return course.credits ? `${course.credits} credits` : "Credits unavailable";
 }
 
 function buildCourseLabel(course) {
@@ -92,7 +97,8 @@ function updateSelectedCoursePreview() {
   selectedCoursePreview.textContent =
     `Professor: ${availableCourse.instructorName} | ` +
     `Section: ${availableCourse.section} | ` +
-    `Term: ${formatTermName(availableCourse)}`;
+    `Term: ${getDisplayTerm(availableCourse)} | ` +
+    `${getDisplayCredits(availableCourse)}`;
 }
 
 function renderCourseOptions() {
@@ -126,7 +132,6 @@ function createCourseCard(course) {
   const card = document.createElement("div");
   card.className = "course-card";
   card.dataset.courseOfferingId = course.courseOfferingId;
-  card.dataset.enrollmentId = course.enrollmentId;
 
   const actionsButton = document.createElement("button");
   actionsButton.className = "course-actions-btn";
@@ -161,7 +166,7 @@ function createCourseCard(course) {
   const termLabel = document.createElement("span");
   termLabel.className = "course-label";
   termLabel.textContent = "Term:";
-  term.append(termLabel, ` ${formatTermName(course)}`);
+  term.append(termLabel, ` ${getDisplayTerm(course)}`);
 
   actionsMenu.appendChild(deleteButton);
   card.append(actionsButton, actionsMenu, title, professor, section, term);
@@ -178,9 +183,9 @@ function createCourseCard(course) {
     actionsMenu.classList.toggle("is-open");
   });
 
-  deleteButton.addEventListener("click", async (event) => {
+  deleteButton.addEventListener("click", (event) => {
     event.stopPropagation();
-    await removeEnrollment(course.enrollmentId);
+    removeEnrollment(course.courseOfferingId);
   });
 
   card.addEventListener("click", () => {
@@ -234,12 +239,13 @@ async function getCurrentUser() {
   return user;
 }
 
-async function loadAllCourses() {
+async function loadAvailableCourses() {
   const { data, error } = await supabaseClient
-    .from("course_offerings")
+    .from("available_courses")
     .select(
-      "course_offering_id, course_code, course_name, section, instructor_name, is_enabled, terms(term_name)",
+      "course_offering_id, course_code, course_name, section, instructor_name, credits, term, is_enabled",
     )
+    .eq("is_enabled", true)
     .order("course_code", { ascending: true })
     .order("section", { ascending: true });
 
@@ -253,42 +259,33 @@ async function loadAllCourses() {
     courseName: course.course_name,
     section: course.section,
     instructorName: course.instructor_name,
+    credits: course.credits,
+    term: course.term,
     isEnabled: course.is_enabled,
-    termName: course.terms?.term_name || "Unknown term",
   }));
 }
 
-async function loadEnrollments() {
-  if (!dashboardState.currentUser) {
+function loadSavedEnrollments() {
+  if (!dashboardState.currentUser || !courseDataStore) {
     return;
   }
 
-  const { data, error } = await supabaseClient
-    .from("enrollments")
-    .select("enrollment_id, course_offering_id, enrollment_status")
-    .eq("student_user_id", dashboardState.currentUser.id)
-    .eq("enrollment_status", "active")
-    .order("enrolled_at", { ascending: false });
-
-  if (error) {
-    throw error;
-  }
-
-  const courseMap = new Map(
+  const savedCourses = courseDataStore.getStudentEnrollments(
+    dashboardState.currentUser.id,
+  );
+  const availableCourseMap = new Map(
     dashboardState.allCourses.map((course) => [course.courseOfferingId, course]),
   );
 
-  dashboardState.enrolledCourses = (data || [])
-    .map((enrollment) => {
-      const course = courseMap.get(enrollment.course_offering_id);
-      if (!course) {
+  dashboardState.enrolledCourses = savedCourses
+    .map((savedCourse) => {
+      const liveCourse = availableCourseMap.get(savedCourse.courseOfferingId);
+      if (!liveCourse) {
         return null;
       }
 
       return {
-        ...course,
-        enrollmentId: enrollment.enrollment_id,
-        enrollmentStatus: enrollment.enrollment_status,
+        ...liveCourse,
       };
     })
     .filter(Boolean);
@@ -298,18 +295,17 @@ async function refreshDashboard() {
   setStatusMessage("Loading your courses...");
 
   try {
-    await loadAllCourses();
-    await loadEnrollments();
+    await loadAvailableCourses();
+    loadSavedEnrollments();
     renderCourses();
     renderCourseOptions();
 
-    const availableCourses = getAvailableCoursesForEnrollment();
     if (dashboardState.enrolledCourses.length > 0) {
       setStatusMessage("");
       return;
     }
 
-    if (availableCourses.length === 0) {
+    if (getAvailableCoursesForEnrollment().length === 0) {
       setStatusMessage("No enabled courses are available to enroll in right now.");
       return;
     }
@@ -326,47 +322,39 @@ async function refreshDashboard() {
   }
 }
 
-async function addEnrollment(courseOfferingId) {
-  if (!dashboardState.currentUser) {
+function addEnrollment(courseOfferingId) {
+  if (!dashboardState.currentUser || !courseDataStore) {
     throw new Error("You must be logged in to enroll in a course.");
   }
 
-  const { error } = await supabaseClient.from("enrollments").insert({
-    student_user_id: dashboardState.currentUser.id,
-    course_offering_id: courseOfferingId,
-    enrollment_status: "active",
-  });
+  const selectedCourse = dashboardState.allCourses.find(
+    (course) => course.courseOfferingId === courseOfferingId,
+  );
 
-  if (error) {
-    throw error;
+  if (!selectedCourse) {
+    throw new Error("The selected course could not be found.");
   }
+
+  courseDataStore.upsertStudentEnrollment(
+    dashboardState.currentUser.id,
+    selectedCourse,
+  );
 }
 
-async function removeEnrollment(enrollmentId) {
-  if (!enrollmentId) {
+function removeEnrollment(courseOfferingId) {
+  if (!dashboardState.currentUser || !courseDataStore) {
     return;
   }
 
-  try {
-    setStatusMessage("Removing course...");
-
-    const { error } = await supabaseClient
-      .from("enrollments")
-      .delete()
-      .eq("enrollment_id", enrollmentId);
-
-    if (error) {
-      throw error;
-    }
-
-    await refreshDashboard();
-  } catch (error) {
-    console.error("Unable to remove enrollment:", error);
-    setStatusMessage(
-      error.message || "Unable to remove this course right now.",
-      true,
-    );
-  }
+  courseDataStore.removeStudentEnrollment(
+    dashboardState.currentUser.id,
+    courseOfferingId,
+  );
+  courseDataStore.removeStudentCourseProgress(
+    dashboardState.currentUser.id,
+    courseOfferingId,
+  );
+  refreshDashboard();
 }
 
 async function initializeDashboard() {
@@ -420,7 +408,7 @@ if (addCourseForm) {
 
     try {
       setStatusMessage("Adding course...");
-      await addEnrollment(selectedCourseId);
+      addEnrollment(selectedCourseId);
       addCourseForm.reset();
       closeModal();
       await refreshDashboard();
