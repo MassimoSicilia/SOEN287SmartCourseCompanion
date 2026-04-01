@@ -10,6 +10,7 @@ const createCourseForm = document.getElementById("create-course-form");
 const coursesList = document.querySelector(".courses-list");
 const courseTemplateSelect = document.getElementById("course-template-select");
 const DASHBOARD_ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
+const ADMIN_DASHBOARD_COURSES_CACHE_KEY = "smartAdminDashboardCourses";
 
 const adminDashboardState = {
   reusableTemplates: [],
@@ -155,7 +156,7 @@ async function loadCourses() {
         createdByUserId: adminProfile.userId,
       });
 
-      return (response?.courses || []).map((course) => ({
+      const courses = (response?.courses || []).map((course) => ({
         id: course.courseOfferingId,
         code: course.courseCode,
         name: course.courseName,
@@ -164,6 +165,11 @@ async function loadCourses() {
         credits: course.credits,
         term: course.term,
       }));
+      sessionStorage.setItem(
+        `${ADMIN_DASHBOARD_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+        JSON.stringify(courses),
+      );
+      return courses;
     } catch (error) {
       console.warn("Node API admin course load failed, falling back to Supabase:", error);
     }
@@ -183,7 +189,7 @@ async function loadCourses() {
     throw error;
   }
 
-  return (data || []).map((course) => ({
+  const courses = (data || []).map((course) => ({
     id: course.course_offering_id,
     code: course.course_code,
     name: course.course_name,
@@ -192,6 +198,11 @@ async function loadCourses() {
     credits: course.credits,
     term: course.term,
   }));
+  sessionStorage.setItem(
+    `${ADMIN_DASHBOARD_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+    JSON.stringify(courses),
+  );
+  return courses;
 }
 
 function renderReusableTemplateOptions() {
@@ -268,7 +279,31 @@ async function renderCourses() {
   coursesList.innerHTML = "";
 
   try {
+    const adminProfile = await getCurrentAdminProfile();
+    const cachedCoursesRaw = sessionStorage.getItem(
+      `${ADMIN_DASHBOARD_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+    );
+
+    if (cachedCoursesRaw) {
+      try {
+        const cachedCourses = JSON.parse(cachedCoursesRaw);
+        if (Array.isArray(cachedCourses) && cachedCourses.length > 0) {
+          cachedCourses.forEach((course) => {
+            const card = createCourseCard(course);
+            addCourseCardClickHandler(card, course);
+            coursesList.appendChild(card);
+          });
+        }
+      } catch (error) {
+        sessionStorage.removeItem(
+          `${ADMIN_DASHBOARD_COURSES_CACHE_KEY}:${adminProfile.userId}`,
+        );
+      }
+    }
+
     const courses = await loadCourses();
+
+    coursesList.innerHTML = "";
 
     if (courses.length === 0) {
       coursesList.appendChild(createEmptyState());

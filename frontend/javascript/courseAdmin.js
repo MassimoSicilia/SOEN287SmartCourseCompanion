@@ -506,16 +506,26 @@ async function initializeAdminCoursePage() {
       JSON.stringify(adminCourseState.course),
     );
 
-    const savedTemplate = await courseDataStore.loadCourseTemplate(
+    applyCourseHeader();
+    adminCourseState.assessments = courseDataStore.getCourseTemplate(
+      adminCourseState.course.id,
+    ).assessments;
+    renderAssessmentRows();
+
+    const templatePromise = courseDataStore.loadCourseTemplate(
       adminCourseState.course.id,
     );
-    adminCourseState.assessments = savedTemplate.assessments;
-    adminCourseState.submissionSummaryByAssessmentId =
-      await courseDataStore.loadCourseSubmissionSummaries(
-        adminCourseState.course.id,
-      );
+    const submissionSummaryPromise = courseDataStore.loadCourseSubmissionSummaries(
+      adminCourseState.course.id,
+    );
 
-    applyCourseHeader();
+    const savedTemplate = await templatePromise;
+    adminCourseState.assessments = savedTemplate.assessments;
+    renderAssessmentRows();
+
+    adminCourseState.submissionSummaryByAssessmentId =
+      await submissionSummaryPromise;
+
     updateEditButtonLabel();
     renderAssessmentRows();
   } catch (error) {
