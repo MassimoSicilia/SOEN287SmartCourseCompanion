@@ -450,7 +450,7 @@ async function loadUpcomingAssignments() {
     return leftTimestamp - rightTimestamp;
   });
 
-  dashboardState.upcomingAssignments = nextAssignments.slice(0, 6);
+  dashboardState.upcomingAssignments = nextAssignments.slice(0, 3);
 }
 
 async function refreshDashboard() {
