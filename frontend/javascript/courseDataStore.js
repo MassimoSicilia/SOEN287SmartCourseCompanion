@@ -52,6 +52,7 @@ function normalizeWeightValue(value) {
 function normalizeAssessment(assessment) {
   return {
     id: assessment?.id || assessment?.assessment_id || createAssessmentId(),
+    courseCode: String(assessment?.courseCode || assessment?.course_code || "").trim(),
     name: String(
       assessment?.name || assessment?.assessment_name || assessment?.title || "",
     ).trim(),
@@ -175,9 +176,14 @@ async function loadCourseTemplate(courseId) {
   }
 }
 
-async function saveCourseTemplateEverywhere(courseId, assessments) {
+async function saveCourseTemplateEverywhere(courseId, assessments, courseCode = "") {
   const normalizedAssessments = Array.isArray(assessments)
-    ? assessments.map(normalizeAssessment)
+    ? assessments.map((assessment) => ({
+        ...normalizeAssessment(assessment),
+        courseCode: String(
+          courseCode || assessment?.courseCode || assessment?.course_code || "",
+        ).trim(),
+      }))
     : [];
 
   saveCourseTemplate(courseId, normalizedAssessments);
@@ -259,12 +265,17 @@ async function saveReusableTemplate({
   };
 }
 
-async function applyReusableTemplateToCourse(courseId, template) {
+async function applyReusableTemplateToCourse(courseId, template, courseCode = "") {
   const assessments = Array.isArray(template?.assessments)
-    ? template.assessments.map(normalizeAssessment)
+    ? template.assessments.map((assessment) => ({
+        ...normalizeAssessment(assessment),
+        courseCode: String(
+          courseCode || assessment?.courseCode || assessment?.course_code || "",
+        ).trim(),
+      }))
     : [];
 
-  await saveCourseTemplateEverywhere(courseId, assessments);
+  await saveCourseTemplateEverywhere(courseId, assessments, courseCode);
 }
 
 function getAllStudentEnrollments() {

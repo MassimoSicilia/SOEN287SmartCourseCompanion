@@ -41,6 +41,7 @@ function mapCourseRow(course) {
 function mapAssessmentRow(assessment) {
   return {
     id: assessment.assessment_id,
+    courseCode: assessment.course_code || "",
     name: assessment.title,
     weight:
       assessment.weight_percent === null || assessment.weight_percent === undefined
@@ -358,7 +359,7 @@ app.get("/api/courses/:courseId/template", async (req, res) => {
 
   try {
     const assessments = await sql`
-      SELECT assessment_id, title, weight_percent, due_date
+      SELECT assessment_id, course_code, title, weight_percent, due_date
       FROM public.assessments
       WHERE course_offering_id = ${courseId}
       ORDER BY due_date ASC, title ASC
@@ -393,6 +394,19 @@ app.put("/api/courses/:courseId/template", async (req, res) => {
 
   try {
     await sql.begin(async (transaction) => {
+      const courseRows = await transaction`
+        SELECT course_code
+        FROM public.available_courses
+        WHERE course_offering_id = ${courseId}
+        LIMIT 1
+      `;
+
+      if (courseRows.length === 0) {
+        throw new Error("Course not found.");
+      }
+
+      const courseCode = String(courseRows[0].course_code || "").trim();
+
       await transaction`
         DELETE FROM public.assessments
         WHERE course_offering_id = ${courseId}
@@ -403,6 +417,7 @@ app.put("/api/courses/:courseId/template", async (req, res) => {
           INSERT INTO public.assessments (
             assessment_id,
             course_offering_id,
+            course_code,
             title,
             weight_percent,
             due_date,
@@ -411,6 +426,7 @@ app.put("/api/courses/:courseId/template", async (req, res) => {
           VALUES (
             ${assessment.id},
             ${courseId},
+            ${courseCode},
             ${assessment.name},
             ${assessment.weightPercent},
             ${assessment.dueDate},

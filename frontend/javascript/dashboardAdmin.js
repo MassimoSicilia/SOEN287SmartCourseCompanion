@@ -422,6 +422,7 @@ if (createCourseForm && coursesList) {
           await window.CourseDataStore.applyReusableTemplateToCourse(
             data.courseOfferingId,
             selectedTemplate,
+            data.courseCode,
           );
         }
       }
