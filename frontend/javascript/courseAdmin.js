@@ -345,6 +345,7 @@ async function persistTemplate() {
   await courseDataStore.saveCourseTemplateEverywhere(
     adminCourseState.course.id,
     adminCourseState.assessments,
+    adminCourseState.course.code,
   );
 }
 
