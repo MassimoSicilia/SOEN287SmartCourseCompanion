@@ -3,6 +3,7 @@ const courseDataStore = window.CourseDataStore;
 const apiClient = window.SmartCourseApi;
 const barChartContainer = document.getElementById("barChartContainer");
 const totalGradeContainer = document.getElementById("totalGradeContainer");
+const gpaContainer = document.getElementById("gpaContainer");
 const ANALYTICS_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
 const ENABLED_STUDENT_COURSES_CACHE_KEY = "smartEnabledStudentCourses";
 
@@ -53,6 +54,19 @@ function renderCurrentAverage(value) {
   totalGradeContainer.setAttribute("aria-valuenow", String(roundedValue));
   totalGradeContainer.style.setProperty("--value", String(roundedValue));
   totalGradeContainer.innerHTML = `<p>${formatPercent(safeValue, 1)}</p>`;
+}
+
+function renderGpa(value) {
+  if (!gpaContainer) {
+    return;
+  }
+
+  if (!Number.isFinite(value)) {
+    gpaContainer.innerHTML = "<p>N/A</p>";
+    return;
+  }
+
+  gpaContainer.innerHTML = `<p>${value.toFixed(1)}</p>`;
 }
 
 function getDuplicateCourseCodes(courses) {
@@ -208,6 +222,89 @@ function calculateOverallAverage(courseGrades) {
   return total / courseGrades.length;
 }
 
+function convertPercentToGradePoints(grade) {
+  if (!Number.isFinite(grade)) {
+    return null;
+  }
+
+  if (grade >= 90) {
+    return 4.3;
+  }
+
+  if (grade >= 85) {
+    return 4.0;
+  }
+
+  if (grade >= 80) {
+    return 3.7;
+  }
+
+  if (grade >= 77) {
+    return 3.3;
+  }
+
+  if (grade >= 73) {
+    return 3.0;
+  }
+
+  if (grade >= 70) {
+    return 2.7;
+  }
+
+  if (grade >= 67) {
+    return 2.3;
+  }
+
+  if (grade >= 63) {
+    return 2.0;
+  }
+
+  if (grade >= 60) {
+    return 1.7;
+  }
+
+  if (grade >= 57) {
+    return 1.3;
+  }
+
+  if (grade >= 53) {
+    return 1.0;
+  }
+
+  if (grade >= 50) {
+    return 0.7;
+  }
+
+  return 0;
+}
+
+function calculateGpa(courseGrades) {
+  if (!Array.isArray(courseGrades) || courseGrades.length === 0) {
+    return null;
+  }
+
+  let weightedGradePoints = 0;
+  let totalCredits = 0;
+
+  courseGrades.forEach((course) => {
+    const credits = Number(course.credits);
+    const gradePoints = convertPercentToGradePoints(course.grade);
+
+    if (!Number.isFinite(credits) || credits <= 0 || gradePoints === null) {
+      return;
+    }
+
+    weightedGradePoints += gradePoints * credits;
+    totalCredits += credits;
+  });
+
+  if (totalCredits === 0) {
+    return null;
+  }
+
+  return weightedGradePoints / totalCredits;
+}
+
 async function loadCourseGrade(course, userId) {
   const [template, courseProgress] = await Promise.all([
     courseDataStore.loadCourseTemplate(course.courseOfferingId),
@@ -218,6 +315,7 @@ async function loadCourseGrade(course, userId) {
     courseCode: course.courseCode,
     courseName: course.courseName,
     section: course.section,
+    credits: course.credits,
     grade: calculateCourseAverage(template.assessments, courseProgress),
   };
 }
@@ -230,11 +328,13 @@ async function initializeAnalyticsPage() {
   if (!supabaseClient || !courseDataStore) {
     renderMessage("Analytics are unavailable right now.");
     renderCurrentAverage(null);
+    renderGpa(null);
     return;
   }
 
   renderMessage("Loading grades...");
   renderCurrentAverage(null);
+  renderGpa(null);
 
   try {
     const currentUser = await getCurrentUser();
@@ -255,15 +355,18 @@ async function initializeAnalyticsPage() {
     if (courseGrades.length === 0) {
       renderMessage("No graded assessments to show yet.");
       renderCurrentAverage(null);
+      renderGpa(null);
       return;
     }
 
     renderCourseGradeBars(courseGrades);
     renderCurrentAverage(calculateOverallAverage(courseGrades));
+    renderGpa(calculateGpa(courseGrades));
   } catch (error) {
     console.error("Unable to load student analytics:", error);
     renderMessage(error.message || "Unable to load analytics right now.");
     renderCurrentAverage(null);
+    renderGpa(null);
   }
 }
 
