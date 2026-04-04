@@ -36,9 +36,7 @@ CREATE TABLE IF NOT EXISTS public.student_profiles (
   user_id UUID NOT NULL UNIQUE REFERENCES public.users(user_id) ON DELETE CASCADE,
   student_number VARCHAR(50) NOT NULL UNIQUE,
   first_name VARCHAR(100) NOT NULL,
-  last_name VARCHAR(100) NOT NULL,
-  program VARCHAR(150),
-  faculty VARCHAR(150)
+  last_name VARCHAR(100) NOT NULL
 );
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -82,9 +80,7 @@ BEGIN
       user_id,
       student_number,
       first_name,
-      last_name,
-      program,
-      faculty
+      last_name
     )
     VALUES (
       NEW.id,
@@ -97,9 +93,7 @@ BEGIN
         ),
         100
       ),
-      left(COALESCE(NULLIF(NEW.raw_user_meta_data ->> 'last_name', ''), 'Student'), 100),
-      left(NULLIF(NEW.raw_user_meta_data ->> 'program', ''), 150),
-      left(NULLIF(NEW.raw_user_meta_data ->> 'faculty', ''), 150)
+      left(COALESCE(NULLIF(NEW.raw_user_meta_data ->> 'last_name', ''), 'Student'), 100)
     )
     ON CONFLICT (user_id) DO NOTHING;
   END IF;
@@ -145,9 +139,7 @@ BEGIN
     user_id,
     student_number,
     first_name,
-    last_name,
-    program,
-    faculty
+    last_name
   )
   SELECT
     au.id,
@@ -160,9 +152,7 @@ BEGIN
       ),
       100
     ),
-    left(COALESCE(NULLIF(au.raw_user_meta_data ->> 'last_name', ''), 'Student'), 100),
-    left(NULLIF(au.raw_user_meta_data ->> 'program', ''), 150),
-    left(NULLIF(au.raw_user_meta_data ->> 'faculty', ''), 150)
+    left(COALESCE(NULLIF(au.raw_user_meta_data ->> 'last_name', ''), 'Student'), 100)
   FROM auth.users au
   WHERE COALESCE(au.raw_user_meta_data ->> 'role', 'student') = 'student'
     AND NULLIF(au.raw_user_meta_data ->> 'student_id', '') IS NOT NULL

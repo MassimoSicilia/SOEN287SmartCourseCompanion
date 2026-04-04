@@ -46,6 +46,12 @@ function buildQuery(params = {}) {
 }
 
 window.SmartCourseApi = {
+  checkStudentNumberAvailability(studentNumber) {
+    return apiRequest(
+      `/student-profiles/availability${buildQuery({ studentNumber })}`,
+    );
+  },
+
   getCourses(params = {}) {
     return apiRequest(`/courses${buildQuery(params)}`);
   },

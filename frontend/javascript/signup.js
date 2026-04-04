@@ -4,6 +4,7 @@ const isInstructorRadio = document.getElementById("isInstructor");
 const idDiv = document.getElementById("IdDiv");
 const studentIdInput = document.getElementById("studentID");
 const supabaseClient = window.supabaseClient;
+const apiClient = window.SmartCourseApi;
 
 //helper method to show/hide student ID field based on selected account type
 function toggleStudentIdVisibility() {
@@ -18,6 +19,14 @@ function toggleStudentIdVisibility() {
       studentIdInput.value = "";
     }
   }
+}
+
+function isGenericNewUserDatabaseError(error) {
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("database error saving new user") ||
+    message.includes("unexpected_failure")
+  );
 }
 
 if (isStudentRadio) {
@@ -49,12 +58,28 @@ if (signUpForm) {
       ? AccountStatus.STUDENT
       : AccountStatus.ADMIN;
 
+    if (role === AccountStatus.STUDENT && !studentID) {
+      alert("Student ID is required for student accounts.");
+      return;
+    }
+
     if (password !== confirmPasswordInput.value) {
       alert("Passwords do not match.");
       return;
     }
 
     try {
+      if (role === AccountStatus.STUDENT && apiClient) {
+        const availability = await apiClient.checkStudentNumberAvailability(
+          studentID,
+        );
+
+        if (!availability.available) {
+          alert("That student ID is already in use.");
+          return;
+        }
+      }
+
       //supabase logic
       const { data, error } = await supabaseClient.auth.signUp({
         email,
@@ -70,7 +95,13 @@ if (signUpForm) {
       });
 
       if (error) {
-        alert(error.message);
+        if (role === AccountStatus.STUDENT && isGenericNewUserDatabaseError(error)) {
+          alert(
+            "Unable to create the student account. The student ID may already exist in the database.",
+          );
+        } else {
+          alert(error.message);
+        }
         return;
       }
 
