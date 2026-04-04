@@ -127,10 +127,38 @@ app.get("/api", (req, res) => {
       health: "/health",
       courses: "/api/courses",
       templates: "/api/templates",
+      studentProfileAvailability: "/api/student-profiles/availability?studentNumber=:studentNumber",
       enrollments: "/api/students/:userId/enrollments",
       progress: "/api/students/:userId/courses/:courseId/progress",
     },
   });
+});
+
+app.get("/api/student-profiles/availability", async (req, res) => {
+  const studentNumber = String(req.query.studentNumber || "").trim();
+
+  if (!studentNumber) {
+    return badRequest(res, "Student number is required.");
+  }
+
+  try {
+    const rows = await sql`
+      SELECT 1
+      FROM public.student_profiles
+      WHERE student_number = ${studentNumber}
+      LIMIT 1
+    `;
+
+    res.json({
+      studentNumber,
+      available: rows.length === 0,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: "Failed to validate student number.",
+      message: error.message,
+    });
+  }
 });
 
 app.get("/api/courses", async (req, res) => {
