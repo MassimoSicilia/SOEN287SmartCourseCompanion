@@ -2,6 +2,7 @@ const supabaseClient = window.supabaseClient;
 const courseDataStore = window.CourseDataStore;
 const apiClient = window.SmartCourseApi;
 const barChartContainer = document.getElementById("barChartContainer");
+const totalGradeContainer = document.getElementById("totalGradeContainer");
 const ANALYTICS_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
 const ENABLED_STUDENT_COURSES_CACHE_KEY = "smartEnabledStudentCourses";
 
@@ -33,6 +34,25 @@ function renderMessage(message) {
   }
 
   barChartContainer.innerHTML = `<p class="analytics-empty-state">${message}</p>`;
+}
+
+function renderCurrentAverage(value) {
+  if (!totalGradeContainer) {
+    return;
+  }
+
+  if (!Number.isFinite(value)) {
+    totalGradeContainer.setAttribute("aria-valuenow", "0");
+    totalGradeContainer.style.setProperty("--value", "0");
+    totalGradeContainer.innerHTML = "<p>N/A</p>";
+    return;
+  }
+
+  const safeValue = clampPercent(value);
+  const roundedValue = Number(safeValue.toFixed(1));
+  totalGradeContainer.setAttribute("aria-valuenow", String(roundedValue));
+  totalGradeContainer.style.setProperty("--value", String(roundedValue));
+  totalGradeContainer.innerHTML = `<p>${formatPercent(safeValue, 1)}</p>`;
 }
 
 function getDuplicateCourseCodes(courses) {
@@ -179,6 +199,15 @@ function calculateCourseAverage(assessments, courseProgress) {
   return weightedSum / totalWeight;
 }
 
+function calculateOverallAverage(courseGrades) {
+  if (!Array.isArray(courseGrades) || courseGrades.length === 0) {
+    return null;
+  }
+
+  const total = courseGrades.reduce((sum, course) => sum + course.grade, 0);
+  return total / courseGrades.length;
+}
+
 async function loadCourseGrade(course, userId) {
   const [template, courseProgress] = await Promise.all([
     courseDataStore.loadCourseTemplate(course.courseOfferingId),
@@ -200,10 +229,12 @@ async function initializeAnalyticsPage() {
 
   if (!supabaseClient || !courseDataStore) {
     renderMessage("Analytics are unavailable right now.");
+    renderCurrentAverage(null);
     return;
   }
 
   renderMessage("Loading grades...");
+  renderCurrentAverage(null);
 
   try {
     const currentUser = await getCurrentUser();
@@ -223,13 +254,16 @@ async function initializeAnalyticsPage() {
 
     if (courseGrades.length === 0) {
       renderMessage("No graded assessments to show yet.");
+      renderCurrentAverage(null);
       return;
     }
 
     renderCourseGradeBars(courseGrades);
+    renderCurrentAverage(calculateOverallAverage(courseGrades));
   } catch (error) {
     console.error("Unable to load student analytics:", error);
     renderMessage(error.message || "Unable to load analytics right now.");
+    renderCurrentAverage(null);
   }
 }
 
