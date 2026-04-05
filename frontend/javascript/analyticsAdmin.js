@@ -1,7 +1,8 @@
 const supabaseClient = window.supabaseClient;
 const barChartContainer = document.getElementById("barChartContainer");
-const studentCountContainer = document.getElementById("studentCountContainer");
 const submissionRateContainer = document.getElementById("submissionRateContainer");
+const STUDENT_ENROLLMENT_STORAGE_KEY = "smartStudentEnrollments";
+const STUDENT_PROGRESS_STORAGE_KEY = "smartStudentAssessmentProgress";
 
 function clampPercent(value) {
   return Math.max(0, Math.min(100, value));
@@ -33,6 +34,10 @@ function parseWeight(value) {
   return numericValue;
 }
 
+function isSubmittedStatus(value) {
+  return String(value || "").trim().toLowerCase() === "submitted";
+}
+
 function formatAverageLabel(value) {
   if (value === null) {
     return "N/A";
@@ -57,14 +62,6 @@ function renderMessage(message) {
   barChartContainer.innerHTML = `<p class="analytics-empty-state">${message}</p>`;
 }
 
-function renderStudentCount(totalStudents) {
-  if (!studentCountContainer) {
-    return;
-  }
-
-  studentCountContainer.innerHTML = `<p>${totalStudents}</p>`;
-}
-
 function renderSubmissionRate(rate) {
   if (!submissionRateContainer) {
     return;
@@ -77,7 +74,7 @@ function renderSubmissionRate(rate) {
   submissionRateContainer.innerHTML = `<p>${roundedRate}%</p>`;
 }
 
-function renderCourseAverageBars(courseAverages) {
+function renderCourseAverageBars(courseAverages, enrollmentsByCourse) {
   if (!barChartContainer) {
     return;
   }
@@ -101,6 +98,8 @@ function renderCourseAverageBars(courseAverages) {
       const safeAverage = course.average === null ? 0 : clampPercent(course.average);
       const valueLabel = formatAverageLabel(course.average);
       const courseLabel = getCourseDisplayCode(course, duplicateCourseCodes);
+      const enrolledCount = (enrollmentsByCourse.get(course.courseOfferingId) || []).length;
+      const studentLabel = enrolledCount === 1 ? "student" : "students";
       const ariaLabel =
         course.average === null
           ? `${course.courseCode} ${course.courseName} has no graded submissions yet`
@@ -113,12 +112,79 @@ function renderCourseAverageBars(courseAverages) {
             <div class="bar-fill-vertical" style="height: ${safeAverage}%;"></div>
           </div>
           <span class="course-name" title="${course.courseCode} - ${course.courseName} (${course.section})">${courseLabel}</span>
+          <span class="course-student-count">${enrolledCount} ${studentLabel}</span>
         </div>
       `;
     })
     .join("");
 
   barChartContainer.innerHTML = rowsMarkup;
+}
+
+function readJsonStorage(storageKey, fallbackValue) {
+  try {
+    const rawValue = window.localStorage.getItem(storageKey);
+    if (!rawValue) {
+      return fallbackValue;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+    return parsedValue ?? fallbackValue;
+  } catch (error) {
+    console.error(`Unable to parse localStorage key ${storageKey}:`, error);
+    return fallbackValue;
+  }
+}
+
+function mergeLocalEnrollmentsByCourse(courseIds, enrollmentsByCourse) {
+  const allEnrollments = readJsonStorage(STUDENT_ENROLLMENT_STORAGE_KEY, {});
+  const allowedCourseIds = new Set(courseIds);
+
+  Object.entries(allEnrollments).forEach(([userId, courses]) => {
+    if (!Array.isArray(courses)) {
+      return;
+    }
+
+    courses.forEach((course) => {
+      const courseId = course?.courseOfferingId;
+      if (!allowedCourseIds.has(courseId)) {
+        return;
+      }
+
+      const existingUserIds = enrollmentsByCourse.get(courseId) || [];
+      if (!existingUserIds.includes(userId)) {
+        enrollmentsByCourse.set(courseId, [...existingUserIds, userId]);
+      }
+    });
+  });
+
+  return enrollmentsByCourse;
+}
+
+function mergeLocalProgressByCourse(courseIds, progressByCourse) {
+  const allProgress = readJsonStorage(STUDENT_PROGRESS_STORAGE_KEY, {});
+  const allowedCourseIds = new Set(courseIds);
+
+  Object.entries(allProgress).forEach(([userId, progressByCourseId]) => {
+    if (!progressByCourseId || typeof progressByCourseId !== "object") {
+      return;
+    }
+
+    Object.entries(progressByCourseId).forEach(([courseId, progressByAssessmentId]) => {
+      if (!allowedCourseIds.has(courseId) || !progressByAssessmentId) {
+        return;
+      }
+
+      const progressKey = `${courseId}:${userId}`;
+      const existingProgress = progressByCourse.get(progressKey) || {};
+      progressByCourse.set(progressKey, {
+        ...existingProgress,
+        ...progressByAssessmentId,
+      });
+    });
+  });
+
+  return progressByCourse;
 }
 
 async function getCurrentAdminUserId() {
@@ -203,13 +269,15 @@ async function loadEnrollmentsByCourse(courseIds) {
     throw error;
   }
 
-  return (data || []).reduce((map, enrollment) => {
+  const enrollmentsByCourse = (data || []).reduce((map, enrollment) => {
     const courseId = enrollment.course_offering_id;
     const courseEnrollments = map.get(courseId) || [];
     courseEnrollments.push(enrollment.user_id);
     map.set(courseId, courseEnrollments);
     return map;
   }, new Map());
+
+  return mergeLocalEnrollmentsByCourse(courseIds, enrollmentsByCourse);
 }
 
 async function loadProgressByCourse(courseIds) {
@@ -226,7 +294,7 @@ async function loadProgressByCourse(courseIds) {
     throw error;
   }
 
-  return (data || []).reduce((map, progressRow) => {
+  const progressByCourse = (data || []).reduce((map, progressRow) => {
     const progressKey = `${progressRow.course_offering_id}:${progressRow.user_id}`;
     const progressByAssessmentId = map.get(progressKey) || {};
     progressByAssessmentId[progressRow.assessment_id] = {
@@ -236,6 +304,8 @@ async function loadProgressByCourse(courseIds) {
     map.set(progressKey, progressByAssessmentId);
     return map;
   }, new Map());
+
+  return mergeLocalProgressByCourse(courseIds, progressByCourse);
 }
 
 function calculateStudentCourseAverage(assessments, progressByAssessmentId) {
@@ -287,18 +357,6 @@ function calculateCourseAverages(courses, assessmentsByCourse, enrollmentsByCour
   });
 }
 
-function calculateTotalStudents(enrollmentsByCourse) {
-  const uniqueStudentIds = new Set();
-
-  enrollmentsByCourse.forEach((userIds) => {
-    userIds.forEach((userId) => {
-      uniqueStudentIds.add(userId);
-    });
-  });
-
-  return uniqueStudentIds.size;
-}
-
 function calculateSubmissionRate(courses, assessmentsByCourse, enrollmentsByCourse, progressByCourse) {
   let submittedCount = 0;
   let totalExpectedSubmissions = 0;
@@ -314,7 +372,7 @@ function calculateSubmissionRate(courses, assessmentsByCourse, enrollmentsByCour
       assessments.forEach((assessment) => {
         totalExpectedSubmissions += 1;
 
-        if (progressByAssessmentId[assessment.assessmentId]?.status === "Submitted") {
+        if (isSubmittedStatus(progressByAssessmentId[assessment.assessmentId]?.status)) {
           submittedCount += 1;
         }
       });
@@ -341,7 +399,7 @@ async function initializeAnalyticsPage() {
 
     if (courses.length === 0) {
       renderMessage("No courses available for analytics.");
-      renderStudentCount(0);
+      renderSubmissionRate(0);
       return;
     }
 
@@ -353,7 +411,6 @@ async function initializeAnalyticsPage() {
         loadProgressByCourse(courseIds),
       ]);
 
-    renderStudentCount(calculateTotalStudents(enrollmentsByCourse));
     renderSubmissionRate(
       calculateSubmissionRate(
         courses,
@@ -369,10 +426,10 @@ async function initializeAnalyticsPage() {
         enrollmentsByCourse,
         progressByCourse,
       ),
+      enrollmentsByCourse,
     );
   } catch (error) {
     console.error("Unable to load admin analytics:", error);
-    renderStudentCount(0);
     renderSubmissionRate(0);
     renderMessage(error.message || "Unable to load analytics right now.");
   }
