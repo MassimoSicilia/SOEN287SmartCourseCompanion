@@ -9,6 +9,7 @@ const sortDueDateBtn = document.getElementById("sortDueDateBtn");
 const container = document.querySelector(".container");
 const categoriesBox = document.querySelector(".categories-box");
 const templateActionMessage = document.getElementById("template-action-message");
+const assessmentWeightMessage = document.getElementById("assessment-weight-message");
 const COURSE_ADMIN_USER_ID_CACHE_KEY = "smartCurrentAdminUserId";
 
 const adminCourseState = {
@@ -156,6 +157,15 @@ function createDisplayRow(assessment) {
   return row;
 }
 
+function setAssessmentWeightMessage(message = "", isError = false) {
+  if (!assessmentWeightMessage) {
+    return;
+  }
+
+  assessmentWeightMessage.textContent = message;
+  assessmentWeightMessage.classList.toggle("is-error", Boolean(isError));
+}
+
 function renderTemplateActionMessage() {
   if (!templateActionMessage) {
     return;
@@ -264,6 +274,11 @@ function renderAssessmentRows() {
     previousNode = row;
   });
   renderTemplateActionMessage();
+  if (!adminCourseState.isEditMode) {
+    setAssessmentWeightMessage("");
+  } else {
+    updateWeightValidationMessage();
+  }
 }
 
 function normalizeWeight(value) {
@@ -273,11 +288,63 @@ function normalizeWeight(value) {
   }
 
   const numericValue = Number(trimmedValue);
-  if (!Number.isFinite(numericValue) || numericValue < 0) {
+  if (!Number.isFinite(numericValue) || numericValue < 0 || numericValue > 100) {
     return null;
   }
 
   return `${numericValue}%`;
+}
+
+function parseWeightNumber(weight) {
+  const numericValue = Number(String(weight || "").replace("%", "").trim());
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function validateAssessmentWeightTotals(assessments) {
+  const totalWeight = assessments.reduce((sum, assessment) => {
+    const numericWeight = parseWeightNumber(assessment.weight);
+    return numericWeight === null ? sum : sum + numericWeight;
+  }, 0);
+
+  if (totalWeight > 100) {
+    throw new Error(
+      `The total assessment weight cannot exceed 100%. Current total: ${totalWeight}%.`,
+    );
+  }
+
+  return totalWeight;
+}
+
+function updateWeightValidationMessage() {
+  if (!adminCourseState.isEditMode) {
+    setAssessmentWeightMessage("");
+    return;
+  }
+
+  const rows = Array.from(container?.querySelectorAll(".assignment-row") || []).filter(
+    (row) => !row.classList.contains("empty-assessment-row"),
+  );
+
+  const totalWeight = rows.reduce((sum, row) => {
+    const weightInput = row.querySelector('input[placeholder="Weight %"]');
+    const numericWeight = parseWeightNumber(weightInput?.value || "");
+    return numericWeight === null ? sum : sum + numericWeight;
+  }, 0);
+
+  if (totalWeight > 100) {
+    setAssessmentWeightMessage(
+      `Total assessment weight is ${totalWeight}%. It must stay at or below 100%.`,
+      true,
+    );
+    return;
+  }
+
+  if (rows.length === 0) {
+    setAssessmentWeightMessage("");
+    return;
+  }
+
+  setAssessmentWeightMessage(`Current total weight: ${totalWeight}%.`);
 }
 
 function collectAssessmentsFromInputs() {
@@ -301,7 +368,10 @@ function collectAssessmentsFromInputs() {
     nameInput?.setCustomValidity("");
 
     if (!weight) {
-      weightInput?.setCustomValidity("Enter a valid weight percentage.");
+      if (weightInput instanceof HTMLInputElement) {
+        weightInput.value = "";
+      }
+      weightInput?.setCustomValidity("Enter a valid weight percentage between 0 and 100.");
       weightInput?.reportValidity();
       throw new Error("Assessment weight is required.");
     }
@@ -323,6 +393,9 @@ function collectAssessmentsFromInputs() {
       dueDate,
     };
   });
+
+  const totalWeight = validateAssessmentWeightTotals(nextAssessments);
+  setAssessmentWeightMessage(`Current total weight: ${totalWeight}%.`);
 
   return nextAssessments;
 }
@@ -419,7 +492,7 @@ async function toggleEditCourseDetails() {
     console.error("Unable to save course template:", error);
     adminCourseState.isEditMode = true;
     updateEditButtonLabel();
-    renderAssessmentRows();
+    updateWeightValidationMessage();
     alert(error.message || "Unable to save this course template.");
   }
 }
@@ -558,6 +631,21 @@ if (saveTemplateBtn) {
 
 if (sortDueDateBtn) {
   sortDueDateBtn.addEventListener("click", sortAssessmentsByDueDate);
+}
+
+if (container) {
+  container.addEventListener("input", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement)) {
+      return;
+    }
+
+    if (!target.classList.contains("assessment-input")) {
+      return;
+    }
+
+    updateWeightValidationMessage();
+  });
 }
 
 initializeAdminCoursePage();
