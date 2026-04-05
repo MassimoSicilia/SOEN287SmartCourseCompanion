@@ -347,6 +347,7 @@ async function applyReusableTemplateToCourse(courseId, template, courseCode = ""
   const assessments = Array.isArray(template?.assessments)
     ? template.assessments.map((assessment) => ({
         ...normalizeAssessment(assessment),
+        id: createAssessmentId(),
         courseCode: String(
           courseCode || assessment?.courseCode || assessment?.course_code || "",
         ).trim(),
