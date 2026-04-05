@@ -3,8 +3,13 @@ const courseDataStore = window.CourseDataStore;
 const apiClient = window.SmartCourseApi;
 const courseGradesContainer = document.querySelector(".course-grades");
 const pageTitle = document.querySelector(".container h1");
+const exportGradesPdfButton = document.getElementById("exportGradesPdfButton");
 const GRADES_STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
 const ENABLED_STUDENT_COURSES_CACHE_KEY = "smartEnabledStudentCourses";
+const gradesPageState = {
+  currentUser: null,
+  courses: [],
+};
 
 const CATEGORY_CONFIG = [
   { key: "assignments", label: "Assignments" },
@@ -396,8 +401,225 @@ function createCourseCard(course, assessments, courseProgress) {
   return card;
 }
 
+function buildPrintableCourseSummary(course, assessments, courseProgress) {
+  const groupedAssessments = groupAssessmentsByCategory(assessments);
+
+  const rows = CATEGORY_CONFIG.map((category) => {
+    const categoryAssessments = groupedAssessments[category.key] || [];
+    return {
+      label: category.label,
+      gradeText:
+        categoryAssessments.length > 0
+          ? calculateCategoryGrade(categoryAssessments, courseProgress)
+          : getMissingPlaceholder(),
+      weightText:
+        categoryAssessments.length > 0
+          ? calculateCategoryWeight(categoryAssessments)
+          : getMissingPlaceholder(),
+    };
+  });
+
+  return {
+    course,
+    rows,
+    averageText: calculateCourseAverage(assessments, courseProgress),
+    totalWeightText: calculateCourseTotalWeight(assessments),
+  };
+}
+
+function formatExportDate() {
+  return new Date().toLocaleString("en-CA", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function openGradesPdfExport() {
+  const { currentUser, courses } = gradesPageState;
+  if (!currentUser || courses.length === 0) {
+    window.alert("There are no grades available to export yet.");
+    return;
+  }
+
+  const printableCourses = courses.map((course) => {
+    const template = courseDataStore.getCourseTemplate(course.courseOfferingId);
+    const courseProgress = courseDataStore.getStudentCourseProgress(
+      currentUser.id,
+      course.courseOfferingId,
+    );
+    return buildPrintableCourseSummary(course, template.assessments, courseProgress);
+  });
+
+  const fullName = `${String(currentUser.user_metadata?.first_name || "").trim()} ${String(currentUser.user_metadata?.last_name || "").trim()}`.trim();
+  const studentLabel = fullName || currentUser.email || "Student";
+  const coursesMarkup = printableCourses
+    .map((courseSummary) => {
+      const rowsMarkup = courseSummary.rows
+        .map(
+          (row) => `
+            <tr>
+              <td>${escapeHtml(row.label)}</td>
+              <td>${escapeHtml(row.gradeText)}</td>
+              <td>${escapeHtml(row.weightText)}</td>
+            </tr>
+          `,
+        )
+        .join("");
+
+      return `
+        <section class="pdf-course-section">
+          <h2>${escapeHtml(courseSummary.course.courseCode)} - ${escapeHtml(courseSummary.course.courseName)}</h2>
+          <p class="pdf-course-meta">
+            Section: ${escapeHtml(courseSummary.course.section)} | Credits: ${escapeHtml(courseSummary.course.credits)}
+          </p>
+          <table>
+            <thead>
+              <tr>
+                <th>Assessment Group</th>
+                <th>Grade</th>
+                <th>Weight</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsMarkup}
+              <tr class="pdf-summary-row">
+                <td>Average</td>
+                <td>${escapeHtml(courseSummary.averageText)}</td>
+                <td>${escapeHtml(courseSummary.totalWeightText)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      `;
+    })
+    .join("");
+
+  const exportMarkup = `
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <title>Smart Course Companion Grades Export</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            color: #111827;
+            margin: 32px;
+          }
+          h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+          }
+          .pdf-meta {
+            margin: 0 0 24px;
+            color: #4b5563;
+            font-size: 14px;
+          }
+          .pdf-course-section {
+            margin-bottom: 28px;
+            page-break-inside: avoid;
+          }
+          .pdf-course-section h2 {
+            margin: 0 0 6px;
+            font-size: 20px;
+          }
+          .pdf-course-meta {
+            margin: 0 0 12px;
+            color: #4b5563;
+            font-size: 14px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          th, td {
+            border: 1px solid #d1d5db;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 14px;
+          }
+          th {
+            background: #f3f4f6;
+          }
+          .pdf-summary-row td {
+            font-weight: 700;
+          }
+          @media print {
+            body {
+              margin: 18px;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Grades Export</h1>
+        <p class="pdf-meta">
+          Student: ${escapeHtml(studentLabel)}<br />
+          Exported: ${escapeHtml(formatExportDate())}
+        </p>
+        ${coursesMarkup}
+      </body>
+    </html>
+  `;
+
+  const printFrame = document.createElement("iframe");
+  printFrame.style.position = "fixed";
+  printFrame.style.right = "0";
+  printFrame.style.bottom = "0";
+  printFrame.style.width = "0";
+  printFrame.style.height = "0";
+  printFrame.style.border = "0";
+  printFrame.setAttribute("aria-hidden", "true");
+
+  const cleanupFrame = () => {
+    window.setTimeout(() => {
+      printFrame.remove();
+    }, 1000);
+  };
+
+  printFrame.onload = () => {
+    const frameWindow = printFrame.contentWindow;
+    if (!frameWindow) {
+      cleanupFrame();
+      window.alert("Unable to prepare the PDF export.");
+      return;
+    }
+
+    frameWindow.focus();
+    frameWindow.print();
+    cleanupFrame();
+  };
+
+  document.body.appendChild(printFrame);
+
+  const frameDocument = printFrame.contentDocument;
+  if (!frameDocument) {
+    cleanupFrame();
+    window.alert("Unable to prepare the PDF export.");
+    return;
+  }
+
+  frameDocument.open();
+  frameDocument.write(exportMarkup);
+  frameDocument.close();
+}
+
 function renderCourseCards(courses, currentUser) {
   courseGradesContainer.innerHTML = "";
+  gradesPageState.currentUser = currentUser;
+  gradesPageState.courses = courses;
 
   courses.forEach((course) => {
     const template = courseDataStore.getCourseTemplate(course.courseOfferingId);
@@ -419,6 +641,8 @@ async function renderGradesPage() {
   courseGradesContainer.innerHTML = "";
 
   if (!supabaseClient || !courseDataStore) {
+    gradesPageState.currentUser = null;
+    gradesPageState.courses = [];
     courseGradesContainer.appendChild(
       createEmptyStateCard("Grades are unavailable right now."),
     );
@@ -468,6 +692,8 @@ async function renderGradesPage() {
     setPageTitle(renderableCourses.length);
 
     if (renderableCourses.length === 0) {
+      gradesPageState.currentUser = currentUser;
+      gradesPageState.courses = [];
       courseGradesContainer.appendChild(
         createEmptyStateCard("No enabled dashboard courses to show."),
       );
@@ -489,6 +715,8 @@ async function renderGradesPage() {
     renderCourseCards(renderableCourses, currentUser);
   } catch (error) {
     console.error("Unable to load student grades:", error);
+    gradesPageState.currentUser = null;
+    gradesPageState.courses = [];
     setPageTitle(0);
     courseGradesContainer.appendChild(
       createEmptyStateCard(error.message || "Unable to load your grades right now."),
@@ -497,5 +725,9 @@ async function renderGradesPage() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (exportGradesPdfButton) {
+    exportGradesPdfButton.addEventListener("click", openGradesPdfExport);
+  }
+
   renderGradesPage();
 });
