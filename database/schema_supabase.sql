@@ -356,9 +356,7 @@ CREATE TABLE IF NOT EXISTS public.course_templates (
   template_description TEXT NOT NULL DEFAULT '',
   created_by_user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (created_by_user_id, template_name)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.student_course_enrollments (

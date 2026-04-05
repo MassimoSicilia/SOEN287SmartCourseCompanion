@@ -67,6 +67,26 @@ function getApiClient() {
   return window.SmartCourseApi || null;
 }
 
+function normalizeReusableTemplate(template) {
+  const descriptionData = parseTemplateDescription(template?.templateDescription);
+
+  return {
+    templateId: String(
+      template?.templateId || template?.course_template_id || createAssessmentId(),
+    ).trim(),
+    templateName: String(template?.templateName || template?.template_name || "").trim(),
+    templateDescription: descriptionData.summary,
+    assessments: descriptionData.assessments,
+    sourceCourseId: descriptionData.sourceCourseId,
+    sourceCourseCode: descriptionData.sourceCourseCode,
+    createdByUserId: String(
+      template?.createdByUserId || template?.created_by_user_id || "",
+    ).trim(),
+    isActive: template?.isActive !== false,
+    createdAt: template?.createdAt || template?.created_at || new Date().toISOString(),
+  };
+}
+
 function parseTemplateDescription(templateDescription) {
   if (!templateDescription) {
     return {
@@ -203,24 +223,7 @@ async function loadReusableTemplates(createdByUserId) {
   }
 
   const response = await apiClient.getReusableTemplates(createdByUserId);
-
-  return (response?.templates || []).map((template) => {
-    const descriptionData = parseTemplateDescription(
-      template.templateDescription,
-    );
-
-    return {
-      templateId: template.templateId,
-      templateName: template.templateName,
-      templateDescription: descriptionData.summary,
-      assessments: descriptionData.assessments,
-      sourceCourseId: descriptionData.sourceCourseId,
-      sourceCourseCode: descriptionData.sourceCourseCode,
-      createdByUserId: template.createdByUserId,
-      isActive: template.isActive,
-      createdAt: template.createdAt,
-    };
-  });
+  return (response?.templates || []).map(normalizeReusableTemplate);
 }
 
 async function saveReusableTemplate({
@@ -233,36 +236,111 @@ async function saveReusableTemplate({
 }) {
   const apiClient = getApiClient();
   if (!apiClient) {
-    throw new Error("Node API client is not loaded.");
+    throw new Error("The template service is unavailable right now.");
   }
 
   const normalizedAssessments = Array.isArray(assessments)
     ? assessments.map(normalizeAssessment)
     : [];
+  const serializedDescription = serializeTemplateDescription({
+    summary: templateSummary,
+    assessments: normalizedAssessments,
+    sourceCourseId,
+    sourceCourseCode,
+  });
 
   const response = await apiClient.saveReusableTemplate({
     templateName,
-    templateDescription: serializeTemplateDescription({
-      summary: templateSummary,
-      assessments: normalizedAssessments,
-      sourceCourseId,
-      sourceCourseCode,
-    }),
+    templateDescription: serializedDescription,
     createdByUserId,
   });
 
-  const descriptionData = parseTemplateDescription(response.templateDescription);
-  return {
-    templateId: response.templateId,
-    templateName: response.templateName,
-    templateDescription: descriptionData.summary,
-    assessments: descriptionData.assessments,
-    sourceCourseId: descriptionData.sourceCourseId,
-    sourceCourseCode: descriptionData.sourceCourseCode,
-    createdByUserId: response.createdByUserId,
-    isActive: response.isActive,
-    createdAt: response.createdAt,
-  };
+  return normalizeReusableTemplate(response);
+}
+
+function buildReusableTemplateNameFromCourse(course, assessments) {
+  const assessmentNames = Array.isArray(assessments)
+    ? assessments
+        .map((assessment) => String(assessment?.name || "").trim())
+        .filter(Boolean)
+    : [];
+
+  if (assessmentNames.length === 0) {
+    return `${course.courseCode} Template`;
+  }
+
+  return `${course.courseCode}: ${assessmentNames.join(" + ")}`;
+}
+
+function buildReusableTemplateSummaryFromCourse(course, assessments) {
+  const summaryParts = Array.isArray(assessments)
+    ? assessments.map((assessment) => {
+        const name = String(assessment?.name || "").trim() || "Assessment";
+        const weight = normalizeWeightValue(assessment?.weight || "");
+        return `${name} ${weight || "0%"}`;
+      })
+    : [];
+
+  if (summaryParts.length === 0) {
+    return `Reusable assessment structure for ${course.courseCode}`;
+  }
+
+  return `${course.courseCode} template: ${summaryParts.join(", ")}`;
+}
+
+async function syncReusableTemplatesFromCourses(createdByUserId) {
+  const apiClient = getApiClient();
+  if (!apiClient || !createdByUserId) {
+    return [];
+  }
+
+  let courses = [];
+
+  try {
+    const response = await apiClient.getCourses({
+      enabled: false,
+      createdByUserId,
+    });
+    courses = Array.isArray(response?.courses) ? response.courses : [];
+  } catch (error) {
+    console.error("Unable to load admin courses for reusable template sync:", error);
+    return [];
+  }
+
+  const syncedTemplates = [];
+
+  for (const course of courses) {
+    const courseId = course?.courseOfferingId;
+    if (!courseId) {
+      continue;
+    }
+
+    try {
+      const template = await loadCourseTemplate(courseId);
+      const assessments = Array.isArray(template?.assessments)
+        ? template.assessments.map(normalizeAssessment)
+        : [];
+
+      if (assessments.length === 0) {
+        continue;
+      }
+
+      const savedTemplate = await saveReusableTemplate({
+        templateName: buildReusableTemplateNameFromCourse(course, assessments),
+        templateSummary: buildReusableTemplateSummaryFromCourse(course, assessments),
+        createdByUserId,
+        assessments,
+        sourceCourseId: courseId,
+        sourceCourseCode: String(course.courseCode || "").trim(),
+      });
+
+      syncedTemplates.push(savedTemplate);
+    } catch (error) {
+      console.error(`Unable to sync reusable template for course ${courseId}:`, error);
+    }
+  }
+
+  return syncedTemplates;
 }
 
 async function applyReusableTemplateToCourse(courseId, template, courseCode = "") {
@@ -569,6 +647,7 @@ window.CourseDataStore = {
   saveCourseTemplateEverywhere,
   loadReusableTemplates,
   saveReusableTemplate,
+  syncReusableTemplatesFromCourses,
   applyReusableTemplateToCourse,
   getStudentEnrollments,
   loadStudentEnrollments,

@@ -422,6 +422,32 @@ async function persistTemplate() {
   );
 }
 
+function buildReusableTemplateName(course, assessments) {
+  const assessmentNames = assessments
+    .map((assessment) => assessment?.name?.trim())
+    .filter(Boolean);
+
+  if (assessmentNames.length === 0) {
+    return `${course.code} Template`;
+  }
+
+  return `${course.code}: ${assessmentNames.join(" + ")}`;
+}
+
+function buildReusableTemplateSummary(course, assessments) {
+  if (!assessments.length) {
+    return `Reusable assessment structure for ${course.code}`;
+  }
+
+  const parts = assessments.map((assessment) => {
+    const name = assessment?.name?.trim() || "Assessment";
+    const weight = assessment?.weight?.trim() || "0%";
+    return `${name} ${weight}`;
+  });
+
+  return `${course.code} template: ${parts.join(", ")}`;
+}
+
 async function saveAsReusableTemplate() {
   if (!adminCourseState.course || !courseDataStore) {
     return;
@@ -440,20 +466,14 @@ async function saveAsReusableTemplate() {
       return;
     }
 
-    const defaultTemplateName = `${adminCourseState.course.code} Template`;
-    const templateName = window.prompt(
-      "Template name:",
-      defaultTemplateName,
-    )?.trim();
-
-    if (!templateName) {
-      return;
-    }
-
-    const templateSummary = window.prompt(
-      "Optional template description:",
-      `Reusable assessment structure for ${adminCourseState.course.code}`,
-    )?.trim() || "";
+    const templateName = buildReusableTemplateName(
+      adminCourseState.course,
+      assessmentsToSave,
+    );
+    const templateSummary = buildReusableTemplateSummary(
+      adminCourseState.course,
+      assessmentsToSave,
+    );
 
     const adminUserId = await getCurrentAdminUserId();
     await courseDataStore.saveReusableTemplate({
@@ -465,7 +485,7 @@ async function saveAsReusableTemplate() {
       sourceCourseCode: adminCourseState.course.code,
     });
 
-    alert(`Reusable template "${templateName}" saved.`);
+    alert(`"${templateName}" is now available in your template options.`);
   } catch (error) {
     console.error("Unable to save reusable template:", error);
     alert(error.message || "Unable to save this reusable template.");

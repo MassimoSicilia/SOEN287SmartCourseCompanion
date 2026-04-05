@@ -19,6 +19,11 @@ export async function initializeDatabase() {
   `;
 
   await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS course_templates_created_by_user_id_template_name_idx
+    ON public.course_templates (created_by_user_id, template_name)
+  `;
+
+  await sql`
     CREATE TABLE IF NOT EXISTS public.student_course_enrollments (
       user_id UUID NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
       course_offering_id UUID NOT NULL REFERENCES public.available_courses(course_offering_id) ON DELETE CASCADE,

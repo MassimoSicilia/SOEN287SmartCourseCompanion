@@ -528,34 +528,54 @@ app.post("/api/templates", async (req, res) => {
   }
 
   try {
-    const rows = await sql`
-      INSERT INTO public.course_templates (
-        template_name,
-        template_description,
-        created_by_user_id,
-        is_active,
-        updated_at
-      )
-      VALUES (
-        ${String(templateName).trim()},
-        ${String(templateDescription)},
-        ${createdByUserId},
-        true,
-        NOW()
-      )
-      ON CONFLICT (created_by_user_id, template_name)
-      DO UPDATE SET
-        template_description = EXCLUDED.template_description,
-        is_active = true,
-        updated_at = NOW()
-      RETURNING
-        course_template_id,
-        template_name,
-        template_description,
-        created_by_user_id,
-        is_active,
-        created_at
+    const normalizedTemplateName = String(templateName).trim();
+    const normalizedTemplateDescription = String(templateDescription);
+
+    const existingTemplates = await sql`
+      SELECT course_template_id
+      FROM public.course_templates
+      WHERE created_by_user_id = ${createdByUserId}
+        AND template_name = ${normalizedTemplateName}
+      LIMIT 1
     `;
+
+    const rows =
+      existingTemplates.length > 0
+        ? await sql`
+            UPDATE public.course_templates
+            SET
+              template_description = ${normalizedTemplateDescription},
+              is_active = true
+            WHERE course_template_id = ${existingTemplates[0].course_template_id}
+            RETURNING
+              course_template_id,
+              template_name,
+              template_description,
+              created_by_user_id,
+              is_active,
+              created_at
+          `
+        : await sql`
+            INSERT INTO public.course_templates (
+              template_name,
+              template_description,
+              created_by_user_id,
+              is_active
+            )
+            VALUES (
+              ${normalizedTemplateName},
+              ${normalizedTemplateDescription},
+              ${createdByUserId},
+              true
+            )
+            RETURNING
+              course_template_id,
+              template_name,
+              template_description,
+              created_by_user_id,
+              is_active,
+              created_at
+          `;
 
     const template = rows[0];
     res.status(201).json({
