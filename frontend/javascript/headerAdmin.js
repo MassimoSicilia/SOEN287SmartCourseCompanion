@@ -1,6 +1,36 @@
-const ADMIN_HEADER_CACHE_KEY = "smartAdminHeaderMarkup";
+const ADMIN_HEADER_CACHE_KEY = "smartAdminHeaderMarkup:v2";
 const ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
 const ADMIN_USER_ID_CACHE_KEY = "smartCurrentAdminUserId";
+
+async function populateHeaderUserName() {
+  const nameElement = document.getElementById("header-user-name");
+  if (!nameElement || !window.supabaseClient) {
+    return;
+  }
+
+  try {
+    const {
+      data: { user },
+      error,
+    } = await window.supabaseClient.auth.getUser();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!user) {
+      nameElement.textContent = "";
+      return;
+    }
+
+    const firstName = String(user.user_metadata?.first_name || "").trim();
+    const lastName = String(user.user_metadata?.last_name || "").trim();
+    nameElement.textContent = `${firstName} ${lastName}`.trim();
+  } catch (error) {
+    console.error("Unable to load admin name:", error);
+    nameElement.textContent = "";
+  }
+}
 
 function initializeHeaderBehavior(container) {
   function getSelectedCoursePath() {
@@ -120,6 +150,7 @@ async function loadSharedHeader() {
   if (cachedHeaderMarkup) {
     headerContainer.innerHTML = cachedHeaderMarkup;
     initializeHeaderBehavior(headerContainer);
+    void populateHeaderUserName();
     return;
   }
 
@@ -133,6 +164,7 @@ async function loadSharedHeader() {
     sessionStorage.setItem(ADMIN_HEADER_CACHE_KEY, headerMarkup);
     headerContainer.innerHTML = headerMarkup;
     initializeHeaderBehavior(headerContainer);
+    void populateHeaderUserName();
   } catch (error) {
     console.error("Unable to load shared header:", error);
   }

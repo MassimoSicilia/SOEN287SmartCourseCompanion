@@ -1,5 +1,36 @@
-const STUDENT_HEADER_CACHE_KEY = "smartStudentHeaderMarkup";
+const STUDENT_HEADER_CACHE_KEY = "smartStudentHeaderMarkup:v2";
 const STUDENT_USER_CACHE_KEY = "smartCurrentStudentUser";
+
+async function populateHeaderUserName() {
+  const nameElement = document.getElementById("header-user-name");
+  if (!nameElement || !window.supabaseClient) {
+    return;
+  }
+
+  try {
+    const {
+      data: { user },
+      error,
+    } = await window.supabaseClient.auth.getUser();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!user) {
+      nameElement.textContent = "";
+      return;
+    }
+
+    sessionStorage.setItem(STUDENT_USER_CACHE_KEY, JSON.stringify(user));
+    const firstName = String(user.user_metadata?.first_name || "").trim();
+    const lastName = String(user.user_metadata?.last_name || "").trim();
+    nameElement.textContent = `${firstName} ${lastName}`.trim();
+  } catch (error) {
+    console.error("Unable to load student name:", error);
+    nameElement.textContent = "";
+  }
+}
 
 function initializeHeaderBehavior(container) {
   function getSelectedCoursePath() {
@@ -118,6 +149,7 @@ async function loadSharedHeader() {
   if (cachedHeaderMarkup) {
     headerContainer.innerHTML = cachedHeaderMarkup;
     initializeHeaderBehavior(headerContainer);
+    void populateHeaderUserName();
     return;
   }
 
@@ -131,6 +163,7 @@ async function loadSharedHeader() {
     sessionStorage.setItem(STUDENT_HEADER_CACHE_KEY, headerMarkup);
     headerContainer.innerHTML = headerMarkup;
     initializeHeaderBehavior(headerContainer);
+    void populateHeaderUserName();
   } catch (error) {
     console.error("Unable to load shared header:", error);
   }
