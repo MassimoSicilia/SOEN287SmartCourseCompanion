@@ -525,10 +525,6 @@ async function loadCourseSubmissionSummaries(courseId) {
 function getAssessmentSubmissionSummary(courseId, assessmentId) {
   const summaries = getAllCourseSubmissionSummaries();
   const cachedSummary = summaries[courseId]?.[assessmentId];
-  if (cachedSummary) {
-    return cachedSummary;
-  }
-
   const enrolledStudentIds = getStudentsEnrolledInCourse(courseId);
   const allProgress = getAllStudentProgress();
 
@@ -541,12 +537,28 @@ function getAssessmentSubmissionSummary(courseId, assessmentId) {
   const completionRate =
     totalCount > 0 ? ((submittedCount / totalCount) * 100).toFixed(2) : "--";
 
-  return {
+  const localSummary = {
     submittedCount,
     totalCount,
     completionStatusText: `${submittedCount}/${totalCount}`,
     completionRateText: totalCount > 0 ? `${completionRate}%` : "--",
   };
+
+  if (!cachedSummary) {
+    return localSummary;
+  }
+
+  const cachedSubmittedCount = Number(cachedSummary.submittedCount ?? 0);
+  const cachedTotalCount = Number(cachedSummary.totalCount ?? 0);
+
+  if (
+    submittedCount > cachedSubmittedCount ||
+    totalCount !== cachedTotalCount
+  ) {
+    return localSummary;
+  }
+
+  return cachedSummary;
 }
 
 window.CourseDataStore = {

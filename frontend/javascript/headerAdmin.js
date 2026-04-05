@@ -1,4 +1,4 @@
-const ADMIN_HEADER_CACHE_KEY = "smartAdminHeaderMarkup:v2";
+const ADMIN_HEADER_CACHE_KEY = "smartAdminHeaderMarkup:v3";
 const ADMIN_PROFILE_CACHE_KEY = "smartCurrentAdminProfile";
 const ADMIN_USER_ID_CACHE_KEY = "smartCurrentAdminUserId";
 

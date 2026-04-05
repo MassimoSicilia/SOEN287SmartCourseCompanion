@@ -64,7 +64,7 @@ body {
 
 .grade-bar-column {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto 1fr auto auto;
   align-items: end;
   justify-items: center;
   gap: 0.6rem;
@@ -79,6 +79,14 @@ body {
   color: var(--text-main);
   font-size: 0.95rem;
   line-height: 1.3;
+}
+
+.course-student-count {
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 
 .bar-track-vertical {
@@ -134,8 +142,7 @@ body {
   gap: 1rem;
   padding: 0;
   align-self: stretch;
-  height: auto;
-  max-height: none;
+  min-height: var(--analytics-panel-height);
 }
 
 #submissionRateSection {
@@ -143,16 +150,7 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  flex: 1.4;
-  min-height: 0;
-}
-
-#totalStudentsSection {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   flex: 1;
-  min-height: 0;
 }
 
 #gradeDiv h2 {
@@ -161,22 +159,6 @@ body {
   align-items: center;
 }
 
-#studentCountContainer p {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: 800;
-  font-size: clamp(1.8rem, 4vw, 2.8rem);
-  line-height: 1;
-  margin: 0;
-}
-
-#studentCountContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-}
 .circularProgress {
   --size: 140px;
   --thickness: 12px;
